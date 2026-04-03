@@ -7,8 +7,11 @@ from typing import List, Optional
 import datetime
 
 # --- DATABASE SETUP ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./fleet.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Replace with your actual Neon/Supabase URL
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_i0nQeNk5USVl@ep-cold-haze-anh8ccf2.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+
+# Notice we removed the "check_same_thread" argument, as Postgres doesn't need it
+engine = create_engine(SQLALCHEMY_DATABASE_URL) 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
