@@ -1,6 +1,6 @@
 const CACHE_NAME = 'crs-fleet-v1';
 const urlsToCache = [
-  '/driver.html',
+  '/portal.html',
   '/manifest.json'
 ];
 
