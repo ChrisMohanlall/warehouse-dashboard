@@ -8,7 +8,7 @@ import datetime
 
 # --- DATABASE SETUP ---
 # Replace with your actual Neon/Supabase URL
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_i0nQeNk5USVl@ep-cold-haze-anh8ccf2.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_uTsvYabtZz84@ep-twilight-leaf-anx9jtj0-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 # Notice we removed the "check_same_thread" argument, as Postgres doesn't need it
 engine = create_engine(SQLALCHEMY_DATABASE_URL) 
