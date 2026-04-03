@@ -218,3 +218,7 @@ def create_fuel_log(log: FuelLogCreate, db: Session = Depends(get_db)):
 @app.get("/activity-logs/")
 def get_activity_logs(db: Session = Depends(get_db)):
     return db.query(DBActivityLog).order_by(DBActivityLog.timestamp.desc()).all()
+
+@app.get("/")
+def read_root():
+    return {"message": "Fleet Tracker API is live and running!"}
