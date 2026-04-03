@@ -1,0 +1,15 @@
+{
+  "name": "Fleet Tracker Pro",
+  "short_name": "Fleet App",
+  "start_url": "/driver.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007bff",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/709/709790.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
