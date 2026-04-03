@@ -2,42 +2,132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fleet Tracker Pro - Driver Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Driver Portal</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
-        nav { background: #333; padding: 15px; text-align: center; }
-        nav button { background: none; color: white; border: none; font-size: 14px; padding: 10px 15px; cursor: pointer; font-weight: bold; margin: 0 5px;}
-        nav button:hover { background: #555; border-radius: 4px;}
-        nav button.active { background: #007bff; border-radius: 4px;}
+        /* CSS Variables for easy color changes */
+        :root {
+            --primary: #007bff;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --bg: #f2f2f7; /* iOS standard gray background */
+            --surface: #ffffff;
+            --text: #1c1c1e;
+            --text-muted: #8e8e93;
+        }
 
-        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
-        .view-section { display: none; } 
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 0; 
+            background: var(--bg); 
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent; /* Removes blue tap flash */
+            user-select: none; /* Prevents accidental text highlighting */
+            overscroll-behavior-y: none; /* Prevents pull-to-refresh bounce */
+        }
+
+        /* Allow typing in inputs */
+        input, select, textarea { user-select: auto; }
+
+        /* NATIVE APP HEADER */
+        header {
+            background: var(--surface);
+            text-align: center;
+            font-weight: 600;
+            font-size: 17px;
+            position: fixed;
+            top: 0; width: 100%;
+            z-index: 100;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+            /* Padding for iPhone Notch */
+            padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; 
+        }
+
+        /* NATIVE BOTTOM NAVIGATION BAR */
+        nav.bottom-bar {
+            position: fixed;
+            bottom: 0; width: 100%;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -1px 0 rgba(0,0,0,0.1);
+            z-index: 100;
+            /* Padding for iPhone Home Bar */
+            padding-bottom: env(safe-area-inset-bottom, 0px); 
+        }
+
+        nav.bottom-bar button {
+            background: none; border: none;
+            color: var(--text-muted); font-size: 12px;
+            padding: 12px 0;
+            flex: 1; text-align: center;
+            font-weight: 600;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        nav.bottom-bar button.active { color: var(--primary); }
+        
+        /* Nav Icons (Using simple text emojis for now, can replace with SVG icons) */
+        nav.bottom-bar button::before { font-size: 20px; }
+        #btn-driver::before { content: "🚚"; }
+        #btn-schedule::before { content: "📅"; }
+        #btn-resources::before { content: "📋"; }
+
+        /* CONTAINER SPACING */
+        .container { 
+            /* Space for top header and bottom nav */
+            padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; 
+            max-width: 600px; margin: 0 auto; 
+        }
+        
+        .view-section { display: none; animation: fadeIn 0.2s ease-in-out; } 
         #driver-view { display: block; } 
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 800px; margin: 0 auto;}
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;}
-        h2 { margin-top: 0; color: #333; font-size: 1.3rem; border-bottom: 2px solid #eee; padding-bottom: 10px;}
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
-        input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;} 
+        /* NATIVE CARDS */
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .card { 
+            background: var(--surface); 
+            padding: 20px; 
+            border-radius: 12px; /* Smoother, iOS style corners */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+        }
+        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
         
-        button.btn { margin-top: 15px; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white;}
-        .btn-blue { background: #007bff; } .btn-blue:hover { background: #0056b3; }
-        .btn-green { background: #28a745; } .btn-green:hover { background: #218838; }
-        .btn-red { background: #dc3545; } .btn-red:hover { background: #c82333; }
+        /* MOBILE INPUTS */
+        label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
+        input, select, textarea { 
+            width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; 
+            border: 1px solid #d1d1d6; border-radius: 8px; 
+            font-size: 16px; /* Crucial: 16px prevents iOS auto-zoom */
+            background: #fafafa;
+            appearance: none; /* Removes ugly default browser dropdown arrows */
+            -webkit-appearance: none;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
+        
+        /* NATIVE BUTTONS */
+        button.btn { 
+            margin-top: 20px; padding: 16px; border: none; border-radius: 10px; 
+            cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white;
+            transition: transform 0.1s; /* Native tap feedback */
+        }
+        button.btn:active { transform: scale(0.97); } /* Squish down when tapped */
+        
+        .btn-blue { background: var(--primary); } 
+        .btn-green { background: var(--success); } 
+        .btn-red { background: var(--danger); } 
         .btn-inline { width: auto; padding: 10px 15px; margin-top: 5px; font-size: 14px;}
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;}
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 300px; }
+        /* Auto-Locate Status */
+        #location_status { font-size: 0.85rem; padding-top: 8px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
+        .modal-content { background: var(--surface); padding: 20px; border-radius: 12px; width: 100%; max-width: 350px; }
     </style>
 </head>
 <body>
 
-<nav>
-    <button onclick="switchTab('driver-view', this)" class="active">Driver Portal</button>
-    <button onclick="switchTab('schedule-view', this)">Race Schedule</button>
-    <button onclick="switchTab('resources-view', this)">Resource Lists</button>
-</nav>
+<header>Fleet Tracker Pro</header>
 
 <div class="container">
     
@@ -46,61 +136,81 @@
             <div class="card">
                 <h2>Log Trip</h2>
                 <form id="tripForm">
-                    <label>Driver:</label>
+                    <label>Driver</label>
                     <select id="trip_driver" onchange="checkNewDriver(this)" required></select>
                     
-                    <label>Truck:</label>
+                    <label>Truck</label>
                     <select id="trip_truck" required></select>
                     
-                    <label>Parked Location (Destination):</label>
+                    <label>Parked Location</label>
                     <div style="display: flex; gap: 10px;">
                         <select id="trip_location" required style="flex: 1;"></select>
-                        <button type="button" class="btn btn-blue btn-inline" onclick="useDeviceLocation()" style="margin-top: 0;">📍 Auto-Locate</button>
+                        <button type="button" class="btn btn-blue btn-inline" onclick="useDeviceLocation()" style="margin-top: 8px;">📍 Locate</button>
                     </div>
-                    <div id="location_status" style="font-size: 0.85rem; color: #666; margin-top: 5px;"></div>
+                    <div id="location_status"></div>
 
-                    <label>Current Trip End KM:</label><input type="number" id="trip_km" required step="0.1">
-                    <label>End Fuel (%):</label><input type="number" id="trip_fuel" required>
-                    <label>Damage Notes:</label><textarea id="trip_notes"></textarea>
-                    <button type="submit" class="btn btn-blue">Submit Log</button>
+                    <label>Current Trip End KM</label>
+                    <input type="number" id="trip_km" required step="0.1" inputmode="decimal"> <label>End Fuel (%)</label>
+                    <input type="number" id="trip_fuel" required inputmode="numeric">
+                    
+                    <label>Damage Notes</label>
+                    <textarea id="trip_notes" rows="3"></textarea>
+                    
+                    <button type="submit" class="btn btn-blue">Submit Trip Log</button>
                 </form>
             </div>
             
             <div class="card">
                 <h2>Fuel Up</h2>
                 <form id="fuelForm">
-                    <label>Driver:</label><select id="fuel_driver" onchange="checkNewDriver(this)" required></select>
-                    <label>Truck:</label><select id="fuel_truck" required></select>
-                    <label>KM at Fuel Up:</label><input type="number" id="fuel_km" required step="0.1">
-                    <label>Receipt Photo URL:</label><input type="text" id="fuel_receipt" required>
-                    <button type="submit" class="btn btn-green">Log Fuel</button>
+                    <label>Driver</label>
+                    <select id="fuel_driver" onchange="checkNewDriver(this)" required></select>
+                    
+                    <label>Truck</label>
+                    <select id="fuel_truck" required></select>
+                    
+                    <label>KM at Fuel Up</label>
+                    <input type="number" id="fuel_km" required step="0.1" inputmode="decimal">
+                    
+                    <label>Receipt Photo URL</label>
+                    <input type="text" id="fuel_receipt" required>
+                    
+                    <button type="submit" class="btn btn-green">Log Fuel Up</button>
                 </form>
             </div>
         </div>
     </div>
 
     <div id="schedule-view" class="view-section">
-        <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <div class="card">
             <h2>Race Schedule</h2>
-            <input type="text" id="master_schedule_link" placeholder="Paste link to Master Schedule...">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Access the master logistics schedule below.</p>
+            <input type="url" id="master_schedule_link" placeholder="Paste link here...">
             <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
         </div>
     </div>
 
     <div id="resources-view" class="view-section">
-        <div class="card" style="max-width: 800px; margin: 0 auto;">
-            <h2>Truck Resource Sheets</h2>
-            <div id="resource-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        <div class="card">
+            <h2>Truck Resources</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Select your truck to open its inventory sheet.</p>
+            <div id="resource-buttons" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
 </div>
+
+<nav class="bottom-bar">
+    <button id="btn-driver" onclick="switchTab('driver-view', this)" class="active">Log Trip</button>
+    <button id="btn-schedule" onclick="switchTab('schedule-view', this)">Schedule</button>
+    <button id="btn-resources" onclick="switchTab('resources-view', this)">Resources</button>
+</nav>
 
 <div id="driverModal" class="modal">
     <div class="modal-content">
         <h3>Add New Driver</h3>
         <label>First Name:</label><input type="text" id="new_dr_first">
         <label>Last Initial:</label><input type="text" id="new_dr_last" maxlength="1">
-        <label>Phone:</label><input type="text" id="new_dr_phone">
+        <label>Phone:</label><input type="tel" id="new_dr_phone" inputmode="tel">
         <button class="btn btn-green" onclick="saveDriver()">Save Driver</button>
         <button class="btn btn-red" onclick="document.getElementById('driverModal').style.display='none'">Cancel</button>
     </div>
@@ -152,26 +262,27 @@
 
             if (nearestLoc) {
                 document.getElementById('trip_location').value = nearestLoc.id;
-                statusLabel.innerHTML = `<span style="color: green;">✔ Exact location locked.</span> Nearest zone is ${nearestLoc.name} (${shortestDistance.toFixed(2)} km away).`;
+                statusLabel.innerHTML = `<span style="color: #34c759;">✔ Exact location locked.</span> Nearest zone is ${nearestLoc.name} (${shortestDistance.toFixed(2)} km).`;
             }
         }, (error) => {
-            statusLabel.innerHTML = `<span style="color: red;">❌ Unable to get location. Ensure location permissions are granted.</span>`;
+            statusLabel.innerHTML = `<span style="color: #ff3b30;">❌ Unable to get location. Check permissions.</span>`;
             console.error(error);
         }, { enableHighAccuracy: true });
     }
 
     function switchTab(tabId, btn) {
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).style.display = 'block';
         btn.classList.add('active');
+        window.scrollTo(0, 0); // Scroll to top when switching tabs
     }
 
     // --- DATA LOADING & API CALLS ---
     function loadData() {
         fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
             const sels = ['trip_driver', 'fuel_driver'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select...</option><option value="NEW" style="font-weight:bold; color:blue;">+ Add New Driver...</option>');
+            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>');
             data.forEach(d => {
                 sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`);
             });
@@ -180,7 +291,7 @@
         fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
             globalLocations = data;
             const sels = ['trip_location'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '');
+            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select parked location...</option>');
             data.forEach(loc => {
                 sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name}</option>`);
             });
@@ -189,12 +300,13 @@
         fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(data => {
             const resButtons = document.getElementById('resource-buttons');
             const sels = ['trip_truck', 'fuel_truck'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '');
+            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select truck...</option>');
+            resButtons.innerHTML = '';
             
             data.forEach(t => {
                 sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
                 if(t.resource_excel_url) {
-                    resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                    resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`;
                 }
             });
         });
@@ -236,7 +348,10 @@
                 exact_lat: exactParkedLat,
                 exact_lng: exactParkedLng
             })
-        }).then(() => location.reload());
+        }).then(() => {
+            alert("Trip logged successfully!");
+            location.reload();
+        });
     });
 
     document.getElementById('fuelForm').addEventListener('submit', e => {
@@ -249,7 +364,10 @@
                 km_at_fuel_up: parseFloat(document.getElementById('fuel_km').value),
                 receipt_url: document.getElementById('fuel_receipt').value
             })
-        }).then(() => location.reload());
+        }).then(() => {
+            alert("Fuel up logged successfully!");
+            location.reload();
+        });
     });
 </script>
 
