@@ -168,7 +168,6 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 
 <script>
-    // Live Render API
     const API_URL = "https://crsdashboard.onrender.com";
     
     let globalTrucks = [];
@@ -176,38 +175,27 @@
     const defaultLngLat = [-79.347015, 43.651070]; 
     let map, adminMap, adminMarker;
 
-    // Securely fetch the Mapbox Token from the Python Backend
     fetch(`${API_URL}/config/`)
         .then(res => res.json())
         .then(config => {
             mapboxgl.accessToken = config.mapbox_token;
 
-            // Initialize Main Map
             map = new mapboxgl.Map({
-                container: 'map', 
-                style: 'mapbox://styles/mapbox/streets-v12', 
-                center: defaultLngLat, 
-                zoom: 12
+                container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12
             });
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-            // Initialize Admin Map
             adminMap = new mapboxgl.Map({
-                container: 'admin-map', 
-                style: 'mapbox://styles/mapbox/streets-v12', 
-                center: defaultLngLat, 
-                zoom: 10
+                container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10
             });
             adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
             adminMap.on('click', (e) => { setAdminMarker(e.lngLat.lat, e.lngLat.lng); });
 
-            // Load data once the main map loads
             map.on('load', () => loadData());
         })
         .catch(err => console.error("Could not load config from backend", err));
 
-    // Mapbox UI Helpers
     function setStyle(targetMap, styleName, mapPrefix) {
         targetMap.setStyle('mapbox://styles/mapbox/' + styleName);
         document.getElementById(`${mapPrefix}-street-btn`).classList.remove('active');
@@ -216,7 +204,6 @@
         else document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
     }
 
-    // Mapbox Geocoding (Address Search)
     function geocodeAddress() {
         const address = document.getElementById('loc_address_search').value;
         if (!address) return alert("Please enter an address to search.");
@@ -247,7 +234,6 @@
         if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
     }
 
-    // Load Data
     function loadData() {
         fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
             const drvSelect = document.getElementById('remove_driver');
@@ -320,7 +306,6 @@
         else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
     }
 
-    // Forms
     function removeEntity(type, selectId) {
         const id = document.getElementById(selectId).value;
         if(!id) return;
