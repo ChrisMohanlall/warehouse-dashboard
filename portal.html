@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Driver Portal</title>
+    <title>CRS Driver Portal</title>
+
+    <link rel="manifest" href="/manifest.json">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CRS Drivers">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+
     <style>
-        /* CSS Variables for easy color changes */
         :root {
             --primary: #007bff;
             --success: #34c759;
             --danger: #ff3b30;
-            --bg: #f2f2f7; /* iOS standard gray background */
+            --bg: #f2f2f7; 
             --surface: #ffffff;
             --text: #1c1c1e;
             --text-muted: #8e8e93;
@@ -21,15 +28,13 @@
             margin: 0; padding: 0; 
             background: var(--bg); 
             color: var(--text);
-            -webkit-tap-highlight-color: transparent; /* Removes blue tap flash */
-            user-select: none; /* Prevents accidental text highlighting */
-            overscroll-behavior-y: none; /* Prevents pull-to-refresh bounce */
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            overscroll-behavior-y: none; 
         }
 
-        /* Allow typing in inputs */
         input, select, textarea { user-select: auto; }
 
-        /* NATIVE APP HEADER */
         header {
             background: var(--surface);
             text-align: center;
@@ -39,11 +44,9 @@
             top: 0; width: 100%;
             z-index: 100;
             box-shadow: 0 1px 0 rgba(0,0,0,0.1);
-            /* Padding for iPhone Notch */
             padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; 
         }
 
-        /* NATIVE BOTTOM NAVIGATION BAR */
         nav.bottom-bar {
             position: fixed;
             bottom: 0; width: 100%;
@@ -52,7 +55,6 @@
             justify-content: space-around;
             box-shadow: 0 -1px 0 rgba(0,0,0,0.1);
             z-index: 100;
-            /* Padding for iPhone Home Bar */
             padding-bottom: env(safe-area-inset-bottom, 0px); 
         }
 
@@ -66,15 +68,12 @@
         }
         nav.bottom-bar button.active { color: var(--primary); }
         
-        /* Nav Icons (Using simple text emojis for now, can replace with SVG icons) */
         nav.bottom-bar button::before { font-size: 20px; }
         #btn-driver::before { content: "🚚"; }
         #btn-schedule::before { content: "📅"; }
         #btn-resources::before { content: "📋"; }
 
-        /* CONTAINER SPACING */
         .container { 
-            /* Space for top header and bottom nav */
             padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; 
             max-width: 600px; margin: 0 auto; 
         }
@@ -83,42 +82,38 @@
         #driver-view { display: block; } 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* NATIVE CARDS */
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         .card { 
             background: var(--surface); 
             padding: 20px; 
-            border-radius: 12px; /* Smoother, iOS style corners */
+            border-radius: 12px; 
             box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
         }
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
         
-        /* MOBILE INPUTS */
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
         input, select, textarea { 
             width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; 
             border: 1px solid #d1d1d6; border-radius: 8px; 
-            font-size: 16px; /* Crucial: 16px prevents iOS auto-zoom */
+            font-size: 16px; 
             background: #fafafa;
-            appearance: none; /* Removes ugly default browser dropdown arrows */
+            appearance: none; 
             -webkit-appearance: none;
         }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
         
-        /* NATIVE BUTTONS */
         button.btn { 
             margin-top: 20px; padding: 16px; border: none; border-radius: 10px; 
             cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white;
-            transition: transform 0.1s; /* Native tap feedback */
+            transition: transform 0.1s; 
         }
-        button.btn:active { transform: scale(0.97); } /* Squish down when tapped */
+        button.btn:active { transform: scale(0.97); } 
         
         .btn-blue { background: var(--primary); } 
         .btn-green { background: var(--success); } 
         .btn-red { background: var(--danger); } 
         .btn-inline { width: auto; padding: 10px 15px; margin-top: 5px; font-size: 14px;}
 
-        /* Auto-Locate Status */
         #location_status { font-size: 0.85rem; padding-top: 8px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
@@ -150,7 +145,9 @@
                     <div id="location_status"></div>
 
                     <label>Current Trip End KM</label>
-                    <input type="number" id="trip_km" required step="0.1" inputmode="decimal"> <label>End Fuel (%)</label>
+                    <input type="number" id="trip_km" required step="0.1" inputmode="decimal"> 
+                    
+                    <label>End Fuel (%)</label>
                     <input type="number" id="trip_fuel" required inputmode="numeric">
                     
                     <label>Damage Notes</label>
@@ -217,14 +214,12 @@
 </div>
 
 <script>
-    // Live Render API
     const API_URL = "https://crsdashboard.onrender.com";
     
     let globalLocations = [];
     let exactParkedLat = null;
     let exactParkedLng = null;
 
-    // --- GEOLOCATION ALGORITHMS ---
     function getDistanceInKm(lat1, lon1, lat2, lon2) {
         const R = 6371; 
         const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -275,10 +270,9 @@
         document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).style.display = 'block';
         btn.classList.add('active');
-        window.scrollTo(0, 0); // Scroll to top when switching tabs
+        window.scrollTo(0, 0); 
     }
 
-    // --- DATA LOADING & API CALLS ---
     function loadData() {
         fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
             const sels = ['trip_driver', 'fuel_driver'];
@@ -312,10 +306,8 @@
         });
     }
 
-    // Load data immediately on page load
     loadData();
 
-    // --- FORM SUBMISSIONS ---
     function checkNewDriver(selectElement) {
         if(selectElement.value === "NEW") {
             document.getElementById('driverModal').style.display = 'flex';
@@ -369,6 +361,19 @@
             location.reload();
         });
     });
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('ServiceWorker registered successfully');
+                })
+                .catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
 </script>
 
 </body>
