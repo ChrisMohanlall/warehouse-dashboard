@@ -192,4 +192,66 @@
             sels.forEach(id => document.getElementById(id).innerHTML = '');
             
             data.forEach(t => {
-                sels.forEach(id => document.getElementById(id).innerHTML += `
+                sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
+                if(t.resource_excel_url) {
+                    resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                }
+            });
+        });
+    }
+
+    // Load data immediately on page load
+    loadData();
+
+    // --- FORM SUBMISSIONS ---
+    function checkNewDriver(selectElement) {
+        if(selectElement.value === "NEW") {
+            document.getElementById('driverModal').style.display = 'flex';
+            selectElement.value = ""; 
+        }
+    }
+
+    function saveDriver() {
+        fetch(`${API_URL}/drivers/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                first_name: document.getElementById('new_dr_first').value,
+                last_initial: document.getElementById('new_dr_last').value,
+                phone: document.getElementById('new_dr_phone').value
+            })
+        }).then(() => location.reload());
+    }
+
+    document.getElementById('tripForm').addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/trip-logs/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                driver_id: parseInt(document.getElementById('trip_driver').value),
+                truck_id: parseInt(document.getElementById('trip_truck').value),
+                destination_location_id: parseInt(document.getElementById('trip_location').value),
+                current_trip_end_km: parseFloat(document.getElementById('trip_km').value),
+                end_fuel: parseFloat(document.getElementById('trip_fuel').value),
+                damage_notes: document.getElementById('trip_notes').value,
+                exact_lat: exactParkedLat,
+                exact_lng: exactParkedLng
+            })
+        }).then(() => location.reload());
+    });
+
+    document.getElementById('fuelForm').addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/fuel-logs/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                driver_id: parseInt(document.getElementById('fuel_driver').value),
+                truck_id: parseInt(document.getElementById('fuel_truck').value),
+                km_at_fuel_up: parseFloat(document.getElementById('fuel_km').value),
+                receipt_url: document.getElementById('fuel_receipt').value
+            })
+        }).then(() => location.reload());
+    });
+</script>
+
+</body>
+</html>
