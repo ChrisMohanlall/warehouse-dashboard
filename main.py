@@ -5,6 +5,11 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+import os
+from dotenv import load_dotenv
+
+# This tells Python to look for a hidden .env file
+load_dotenv()
 
 # --- DATABASE SETUP ---
 # Replace with your actual Neon/Supabase URL
@@ -222,3 +227,9 @@ def get_activity_logs(db: Session = Depends(get_db)):
 @app.get("/")
 def read_root():
     return {"message": "Fleet Tracker API is live and running!"}
+
+@app.get("/config/")
+def get_config():
+    # Grab the key securely from the environment
+    token = os.getenv("MAPBOX_API_KEY") 
+    return {"mapbox_token": token}
