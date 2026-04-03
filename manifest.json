@@ -1,7 +1,7 @@
 {
   "name": "CRS Warehouse Dashboard",
   "short_name": "CRS Drivers",
-  "start_url": "/driver.html",
+  "start_url": "/portal.html",
   "display": "standalone",
   "background_color": "#f2f2f7",
   "theme_color": "#007bff",
