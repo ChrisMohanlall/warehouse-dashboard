@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Tracker Pro</title>
+    
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
+        nav { background: #333; padding: 15px; text-align: center; }
+        nav button { background: none; color: white; border: none; font-size: 14px; padding: 10px 15px; cursor: pointer; font-weight: bold; margin: 0 5px;}
+        nav button:hover { background: #555; border-radius: 4px;}
+        nav button.active { background: #007bff; border-radius: 4px;}
+
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+        .view-section { display: none; } 
+        #dashboard-view { display: block; } 
+
+        .dashboard-grid { display: flex; gap: 20px; height: 700px; }
+        .list-sidebar { width: 30%; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-y: auto; }
+        
+        #map-wrapper { width: 70%; position: relative; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden;}
+        #map { height: 100%; width: 100%; }
+        #admin-map-wrapper { position: relative; height: 250px; width: 100%; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; overflow: hidden;}
+        #admin-map { height: 100%; width: 100%; }
+
+        .map-style-toggle { position: absolute; top: 10px; left: 10px; z-index: 1; background: white; padding: 5px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; gap: 5px;}
+        .map-style-toggle button { border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-size: 12px; background: #eee;}
+        .map-style-toggle button.active { background: #007bff; color: white; }
+
+        .list-group { list-style: none; padding: 0; margin: 0 0 20px 0; }
+        .list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;}
+        .list-item:hover { background: #f0f8ff; border-left: 4px solid #007bff; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px;}
+        h2 { margin-top: 0; color: #333; font-size: 1.3rem; border-bottom: 2px solid #eee; padding-bottom: 10px;}
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;}
+        
+        button.btn { margin-top: 15px; padding: 10px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 14px; font-weight: bold; color: white;}
+        .btn-blue { background: #007bff; } .btn-blue:hover { background: #0056b3; }
+        .btn-green { background: #28a745; } .btn-green:hover { background: #218838; }
+        .btn-red { background: #dc3545; } .btn-red:hover { background: #c82333; }
+        .btn-inline { width: auto; padding: 8px 15px; margin-top: 5px; font-size: 14px;}
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;}
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 300px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .mapboxgl-popup-content { padding: 10px 15px; font-family: Arial; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <button onclick="switchTab('dashboard-view', this)" class="active">Map Dashboard</button>
+    <button onclick="switchTab('driver-view', this)">Driver Portal</button>
+    <button onclick="switchTab('admin-view', this)">Admin Portal</button>
+    <button onclick="switchTab('schedule-view', this)">Race Schedule</button>
+    <button onclick="switchTab('resources-view', this)">Resource Lists</button>
+</nav>
+
+<div class="container">
+    
+    <div id="dashboard-view" class="view-section">
+        <div class="dashboard-grid">
+            <div class="list-sidebar">
+                <h3>Trucks</h3><ul id="list-trucks" class="list-group"></ul>
+                <h3>Locations</h3><ul id="list-locations" class="list-group"></ul>
+            </div>
+            <div id="map-wrapper">
+                <div class="map-style-toggle">
+                    <button id="main-street-btn" class="active" onclick="setStyle(map, 'streets-v12', 'main')">Street</button>
+                    <button id="main-sat-btn" onclick="setStyle(map, 'satellite-streets-v12', 'main')">Satellite</button>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="driver-view" class="view-section">
+        <div class="form-grid">
+            <div class="card">
+                <h2>Log Trip</h2>
+                <form id="tripForm">
+                    <label>Driver:</label>
+                    <select id="trip_driver" onchange="checkNewDriver(this)" required></select>
+                    
+                    <label>Truck:</label>
+                    <select id="trip_truck" required></select>
+                    
+                    <label>Parked Location (Destination):</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="trip_location" required style="flex: 1;"></select>
+                        <button type="button" class="btn btn-blue btn-inline" onclick="useDeviceLocation()" style="margin-top: 0;">📍 Auto-Locate</button>
+                    </div>
+                    <div id="location_status" style="font-size: 0.8rem; color: #666; margin-top: 5px;"></div>
+
+                    <label>Current Trip End KM:</label><input type="number" id="trip_km" required>
+                    <label>End Fuel (%):</label><input type="number" id="trip_fuel" required>
+                    <label>Damage Notes:</label><textarea id="trip_notes"></textarea>
+                    <button type="submit" class="btn btn-blue">Submit Log</button>
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>Fuel Up</h2>
+                <form id="fuelForm">
+                    <label>Driver:</label><select id="fuel_driver" onchange="checkNewDriver(this)" required></select>
+                    <label>Truck:</label><select id="fuel_truck" required></select>
+                    <label>KM at Fuel Up:</label><input type="number" id="fuel_km" required>
+                    <label>Receipt Photo URL:</label><input type="text" id="fuel_receipt" required>
+                    <button type="submit" class="btn btn-green">Log Fuel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-view" class="view-section">
+        <div class="form-grid">
+            <div class="card">
+                <h2>Add Location</h2>
+                <form id="locationForm">
+                    <label>Location Name:</label><input type="text" id="loc_name" required>
+                    <label>Type:</label><input type="text" id="loc_type" required>
+                    
+                    <label>Search by Address:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="loc_address_search" placeholder="e.g. 123 Main St, Toronto">
+                        <button type="button" class="btn btn-blue btn-inline" onclick="geocodeAddress()">Search</button>
+                    </div>
+
+                    <div id="admin-map-wrapper">
+                        <div class="map-style-toggle">
+                            <button id="admin-street-btn" class="active" onclick="setStyle(adminMap, 'streets-v12', 'admin')">Street</button>
+                            <button id="admin-sat-btn" onclick="setStyle(adminMap, 'satellite-streets-v12', 'admin')">Satellite</button>
+                        </div>
+                        <div id="admin-map"></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Or click the map directly to drop a pin.</div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <div style="flex: 1;"><label>Latitude:</label><input type="number" id="loc_lat" step="any" required></div>
+                        <div style="flex: 1;"><label>Longitude:</label><input type="number" id="loc_lng" step="any" required></div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-green">Save Location</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Truck Management</h2>
+                <form id="truckForm">
+                    <label>Truck Name (e.g. TRK-A):</label><input type="text" id="trk_name" required>
+                    <label>License Plate:</label><input type="text" id="trk_plate" required>
+                    <label>Purpose:</label><input type="text" id="trk_purpose" required>
+                    <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
+                    <label>Initial Location:</label><select id="trk_loc"></select>
+                    <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
+                    <label>General Notes:</label><textarea id="trk_notes"></textarea>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="btn btn-green" onclick="submitTruck('add')">Intake New</button>
+                        <button type="button" class="btn btn-blue" onclick="submitTruck('update')">Update Existing</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Remove Assets</h2>
+                <label>Remove Driver:</label>
+                <div style="display:flex; gap:10px;"><select id="remove_driver"></select><button class="btn btn-red btn-inline" onclick="removeEntity('drivers', 'remove_driver')">Remove</button></div>
+                <label>Remove Truck:</label>
+                <div style="display:flex; gap:10px;"><select id="remove_truck"></select><button class="btn btn-red btn-inline" onclick="removeEntity('trucks', 'remove_truck')">Remove</button></div>
+                <label>Remove Location:</label>
+                <div style="display:flex; gap:10px;"><select id="remove_location"></select><button class="btn btn-red btn-inline" onclick="removeEntity('locations', 'remove_location')">Remove</button></div>
+            </div>
+        </div>
+
+        <div class="card" style="max-width: 100%;">
+            <h2>Activity Log</h2>
+            <table>
+                <thead><tr><th>Time</th><th>Action</th><th>Details</th></tr></thead>
+                <tbody id="activity-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="schedule-view" class="view-section">
+        <div class="card" style="max-width: 100%;">
+            <h2>Race Schedule</h2>
+            <input type="text" id="master_schedule_link" placeholder="Paste link to Master Schedule...">
+            <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
+        </div>
+    </div>
+
+    <div id="resources-view" class="view-section">
+        <div class="card" style="max-width: 100%;">
+            <h2>Truck Resource Sheets</h2>
+            <div id="resource-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="driverModal" class="modal">
+    <div class="modal-content">
+        <h3>Add New Driver</h3>
+        <label>First Name:</label><input type="text" id="new_dr_first">
+        <label>Last Initial:</label><input type="text" id="new_dr_last" maxlength="1">
+        <label>Phone:</label><input type="text" id="new_dr_phone">
+        <button class="btn btn-green" onclick="saveDriver()">Save Driver</button>
+        <button class="btn btn-red" onclick="document.getElementById('driverModal').style.display='none'">Cancel</button>
+    </div>
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+<script>
+    const API_URL = "http://localhost:8000";
+    
+    // --- 🚨 PASTE YOUR MAPBOX TOKEN HERE 🚨 ---
+    mapboxgl.accessToken = 'pk.eyJ1IjoiY2hyaXNtb2hhbmxhbGwiLCJhIjoiY21uaTZwMW4xMGFkZDJvb2RteDBseTE0NyJ9.GStlerz3-8umCN5IdQQfEw';
+
+    let globalTrucks = [];
+    let globalLocations = [];
+    let exactParkedLat = null;
+    let exactParkedLng = null;
+    
+    const defaultLngLat = [-79.347015, 43.651070]; 
+
+    // --- INITIALIZE MAPS ---
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: defaultLngLat,
+        zoom: 12
+    });
+    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+    const adminMap = new mapboxgl.Map({
+        container: 'admin-map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: defaultLngLat,
+        zoom: 10
+    });
+    adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+    
+    let adminMarker = null;
+
+    adminMap.on('click', (e) => {
+        setAdminMarker(e.lngLat.lat, e.lngLat.lng);
+    });
+
+    // --- GEOLOCATION ALGORITHMS ---
+    function getDistanceInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; 
+    }
+
+    function useDeviceLocation() {
+        const statusLabel = document.getElementById('location_status');
+        statusLabel.textContent = "Searching for GPS signal...";
+
+        if (!navigator.geolocation) {
+            statusLabel.textContent = "Geolocation is not supported by your browser.";
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition((position) => {
+            exactParkedLat = position.coords.latitude;
+            exactParkedLng = position.coords.longitude;
+            
+            let nearestLoc = null;
+            let shortestDistance = Infinity;
+
+            globalLocations.forEach(loc => {
+                let distance = getDistanceInKm(exactParkedLat, exactParkedLng, loc.lat, loc.lng);
+                if (distance < shortestDistance) {
+                    shortestDistance = distance;
+                    nearestLoc = loc;
+                }
+            });
+
+            if (nearestLoc) {
+                document.getElementById('trip_location').value = nearestLoc.id;
+                statusLabel.innerHTML = `<span style="color: green;">✔ Exact location locked.</span> Nearest zone is ${nearestLoc.name} (${shortestDistance.toFixed(2)} km away).`;
+            }
+        }, (error) => {
+            statusLabel.innerHTML = `<span style="color: red;">❌ Unable to get location. Ensure location permissions are granted.</span>`;
+            console.error(error);
+        }, { enableHighAccuracy: true });
+    }
+
+    // --- MAPBOX HELPERS ---
+    function setStyle(targetMap, styleName, mapPrefix) {
+        targetMap.setStyle('mapbox://styles/mapbox/' + styleName);
+        document.getElementById(`${mapPrefix}-street-btn`).classList.remove('active');
+        document.getElementById(`${mapPrefix}-sat-btn`).classList.remove('active');
+        if (styleName.includes('satellite')) {
+            document.getElementById(`${mapPrefix}-sat-btn`).classList.add('active');
+        } else {
+            document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
+        }
+    }
+
+    function geocodeAddress() {
+        const address = document.getElementById('loc_address_search').value;
+        if (!address) return alert("Please enter an address to search.");
+
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`;
+
+        fetch(geocodeUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const [lng, lat] = data.features[0].center;
+                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
+                    setAdminMarker(lat, lng);
+                } else {
+                    alert("Address not found.");
+                }
+            })
+            .catch(err => alert("Error looking up address."));
+    }
+
+    function setAdminMarker(lat, lng) {
+        document.getElementById('loc_lat').value = lat.toFixed(6);
+        document.getElementById('loc_lng').value = lng.toFixed(6);
+        if (adminMarker) adminMarker.remove(); 
+        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).style.display = 'block';
+        btn.classList.add('active');
+
+        if(tabId === 'dashboard-view') setTimeout(() => map.resize(), 100);
+        if(tabId === 'admin-view') setTimeout(() => adminMap.resize(), 100);
+    }
+
+    // --- DATA LOADING & API CALLS ---
+    function loadData() {
+        fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
+            const sels = ['trip_driver', 'fuel_driver', 'remove_driver'];
+            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select...</option><option value="NEW" style="font-weight:bold; color:blue;">+ Add New Driver...</option>');
+            data.forEach(d => {
+                sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`);
+            });
+        });
+
+        fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
+            globalLocations = data;
+            const locList = document.getElementById('list-locations');
+            const sels = ['trip_location', 'trk_loc', 'remove_location'];
+            
+            data.forEach(loc => {
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>Type: ${loc.type}`);
+                const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(popup).addTo(map);
+
+                locList.innerHTML += `<li class="list-item" onclick="zoomToMax(${loc.lat}, ${loc.lng}, ${data.indexOf(loc)}, 'loc')"><b>${loc.name}</b></li>`;
+                
+                sels.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
+                });
+                loc.markerRef = marker;
+            });
+        });
+
+        fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(data => {
+            globalTrucks = data;
+            const trkList = document.getElementById('list-trucks');
+            const resButtons = document.getElementById('resource-buttons');
+            const sels = ['trip_truck', 'fuel_truck', 'remove_truck'];
+            
+            data.forEach(t => {
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Driver: ${t.current_driver_name}`);
+                const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(popup).addTo(map);
+
+                trkList.innerHTML += `<li class="list-item" onclick="zoomToMax(${t.lat}, ${t.lng}, ${data.indexOf(t)}, 'trk')"><b>${t.truck_name}</b> (${t.license_plate})</li>`;
+                
+                sels.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+                });
+
+                if(t.resource_excel_url) {
+                    resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                }
+                t.markerRef = marker;
+            });
+        });
+
+        fetch(`${API_URL}/activity-logs/`).then(res=>res.json()).then(data => {
+            const tbody = document.getElementById('activity-table');
+            data.forEach(log => {
+                const date = new Date(log.timestamp).toLocaleString();
+                tbody.innerHTML += `<tr><td>${date}</td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
+            });
+        });
+    }
+
+    function zoomToMax(lat, lng, index, type) {
+        map.flyTo({ center: [lng, lat], zoom: 18, essential: true });
+        if (type === 'loc' && globalLocations[index]) globalLocations[index].markerRef.togglePopup();
+        else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
+    }
+
+    map.on('load', () => loadData());
+
+    // --- FORM SUBMISSIONS ---
+    function checkNewDriver(selectElement) {
+        if(selectElement.value === "NEW") {
+            document.getElementById('driverModal').style.display = 'flex';
+            selectElement.value = ""; 
+        }
+    }
+
+    function saveDriver() {
+        fetch(`${API_URL}/drivers/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                first_name: document.getElementById('new_dr_first').value,
+                last_initial: document.getElementById('new_dr_last').value,
+                phone: document.getElementById('new_dr_phone').value
+            })
+        }).then(() => location.reload());
+    }
+
+    function removeEntity(type, selectId) {
+        const id = document.getElementById(selectId).value;
+        if(!id) return;
+        if(confirm("Are you sure you want to delete this?")) {
+            fetch(`${API_URL}/${type}/${id}`, { method: 'DELETE' }).then(() => location.reload());
+        }
+    }
+
+    function submitTruck(action) {
+        const payload = {
+            truck_name: document.getElementById('trk_name').value,
+            license_plate: document.getElementById('trk_plate').value,
+            purpose: document.getElementById('trk_purpose').value,
+            start_fuel: parseFloat(document.getElementById('trk_fuel').value || 0),
+            location_id: parseInt(document.getElementById('trk_loc').value || 1),
+            resource_excel_url: document.getElementById('trk_excel').value,
+            general_notes: document.getElementById('trk_notes').value
+        };
+
+        if (action === 'add') {
+            fetch(`${API_URL}/trucks/`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
+            .then(() => location.reload());
+        } else {
+            const existing = globalTrucks.find(t => t.truck_name === payload.truck_name);
+            if(!existing) return alert("Truck name not found for update!");
+            fetch(`${API_URL}/trucks/${existing.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
+            .then(() => location.reload());
+        }
+    }
+
+    document.getElementById('tripForm').addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/trip-logs/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                driver_id: parseInt(document.getElementById('trip_driver').value),
+                truck_id: parseInt(document.getElementById('trip_truck').value),
+                destination_location_id: parseInt(document.getElementById('trip_location').value),
+                current_trip_end_km: parseFloat(document.getElementById('trip_km').value),
+                end_fuel: parseFloat(document.getElementById('trip_fuel').value),
+                damage_notes: document.getElementById('trip_notes').value,
+                exact_lat: exactParkedLat,
+                exact_lng: exactParkedLng
+            })
+        }).then(() => location.reload());
+    });
+
+    document.getElementById('fuelForm').addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/fuel-logs/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                driver_id: parseInt(document.getElementById('fuel_driver').value),
+                truck_id: parseInt(document.getElementById('fuel_truck').value),
+                km_at_fuel_up: parseFloat(document.getElementById('fuel_km').value),
+                receipt_url: document.getElementById('fuel_receipt').value
+            })
+        }).then(() => location.reload());
+    });
+
+    document.getElementById('locationForm').addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/locations/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('loc_name').value,
+                type: document.getElementById('loc_type').value,
+                lat: parseFloat(document.getElementById('loc_lat').value),
+                lng: parseFloat(document.getElementById('loc_lng').value)
+            })
+        }).then(() => location.reload());
+    });
+</script>
+
+</body>
+</html>
