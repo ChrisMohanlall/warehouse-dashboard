@@ -8,15 +8,12 @@ from pydantic import BaseModel
 from typing import List, Optional
 import datetime
 
-# Load hidden variables from the .env file (for local testing)
+# Load hidden variables from the .env file
 load_dotenv()
 
 # --- DATABASE SETUP ---
-# Replace with your actual Neon.tech or Supabase connection string
-# Example: "postgresql://user:password@ep-cool-db-1234.us-east-2.aws.neon.tech/fleetdb"
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fleet.db") # Falls back to local SQLite if no URL is provided
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fleet.db") 
 
-# If using Postgres, we don't need check_same_thread. If SQLite, we do.
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 else:
@@ -95,7 +92,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware, 
-    allow_origins=["*"], # In production, you can lock this down to just your Vercel URL
+    allow_origins=["*"], 
     allow_credentials=True, 
     allow_methods=["*"], 
     allow_headers=["*"]
@@ -106,7 +103,6 @@ def get_db():
     try: yield db
     finally: db.close()
 
-# Schemas
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; lat: float; lng: float
 class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
@@ -130,7 +126,6 @@ class TripLogCreate(BaseModel):
 def root():
     return {"message": "CRS Warehouse Dashboard API is live!"}
 
-# NEW: SECURE CONFIG ENDPOINT
 @app.get("/config/")
 def get_config():
     token = os.getenv("MAPBOX_API_KEY")
@@ -138,7 +133,6 @@ def get_config():
         raise HTTPException(status_code=500, detail="Mapbox token is missing from server environment variables.")
     return {"mapbox_token": token}
 
-# DRIVERS
 @app.get("/drivers/")
 def get_drivers(db: Session = Depends(get_db)): return db.query(DBDriver).all()
 
@@ -157,7 +151,6 @@ def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     db.delete(driver); db.commit()
     return {"message": "Driver removed."}
 
-# LOCATIONS
 @app.get("/locations/")
 def get_locations(db: Session = Depends(get_db)): return db.query(DBLocation).all()
 
@@ -174,7 +167,6 @@ def delete_location(loc_id: int, db: Session = Depends(get_db)):
     db.delete(loc); db.commit()
     return {"message": "Location removed."}
 
-# TRUCKS
 @app.get("/trucks/")
 def get_trucks(db: Session = Depends(get_db)): 
     trucks = db.query(DBTruck).all()
@@ -195,4 +187,54 @@ def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     return {"message": "Truck added!"}
 
 @app.put("/trucks/{truck_id}")
-def update_truck(truck_id: int, truck_
+def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends(get_db)):
+    truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
+    truck.license_plate = truck_update.license_plate
+    truck.purpose = truck_update.purpose
+    truck.start_fuel = truck_update.start_fuel
+    truck.general_notes = truck_update.general_notes
+    truck.resource_excel_url = truck_update.resource_excel_url
+    log_activity(db, "Update Truck", f"Repurposed truck: {truck.truck_name}. New plate: {truck.license_plate}.")
+    db.commit()
+    return {"message": "Truck updated!"}
+
+@app.delete("/trucks/{truck_id}")
+def delete_truck(truck_id: int, db: Session = Depends(get_db)):
+    truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
+    log_activity(db, "Remove Truck", f"Removed truck: {truck.truck_name}.")
+    db.delete(truck); db.commit()
+    return {"message": "Truck removed."}
+
+@app.post("/trip-logs/")
+def create_trip_log(log: TripLogCreate, db: Session = Depends(get_db)):
+    log_data = log.model_dump(exclude={"exact_lat", "exact_lng"})
+    db.add(DBTripLog(**log_data))
+
+    truck = db.query(DBTruck).filter(DBTruck.id == log.truck_id).first()
+    loc = db.query(DBLocation).filter(DBLocation.id == log.destination_location_id).first()
+    
+    if log.exact_lat is not None and log.exact_lng is not None:
+        truck.lat = log.exact_lat
+        truck.lng = log.exact_lng
+    else:
+        truck.lat = loc.lat
+        truck.lng = loc.lng
+        
+    truck.current_driver_id = log.driver_id
+    
+    log_activity(db, "Trip Log", f"Truck {truck.truck_name} parked near {loc.name}.")
+    db.commit()
+    return {"message": "Trip logged and exact location updated!"}
+
+@app.post("/fuel-logs/")
+def create_fuel_log(log: FuelLogCreate, db: Session = Depends(get_db)):
+    db.add(DBFuelLog(**log.model_dump()))
+    truck = db.query(DBTruck).filter(DBTruck.id == log.truck_id).first()
+    driver = db.query(DBDriver).filter(DBDriver.id == log.driver_id).first()
+    log_activity(db, "Fuel Up", f"{driver.first_name} fueled up {truck.truck_name} at {log.km_at_fuel_up} KM.")
+    db.commit()
+    return {"message": "Fuel log saved!"}
+
+@app.get("/activity-logs/")
+def get_activity_logs(db: Session = Depends(get_db)):
+    return db.query(DBActivityLog).order_by(DBActivityLog.timestamp.desc()).all()
