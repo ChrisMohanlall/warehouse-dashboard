@@ -189,4 +189,181 @@
                 center: defaultLngLat, 
                 zoom: 12
             });
-            map.add
+            map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+            // Initialize Admin Map
+            adminMap = new mapboxgl.Map({
+                container: 'admin-map', 
+                style: 'mapbox://styles/mapbox/streets-v12', 
+                center: defaultLngLat, 
+                zoom: 10
+            });
+            adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+            adminMap.on('click', (e) => { setAdminMarker(e.lngLat.lat, e.lngLat.lng); });
+
+            // Load data once the main map loads
+            map.on('load', () => loadData());
+        })
+        .catch(err => console.error("Could not load config from backend", err));
+
+    // Mapbox UI Helpers
+    function setStyle(targetMap, styleName, mapPrefix) {
+        targetMap.setStyle('mapbox://styles/mapbox/' + styleName);
+        document.getElementById(`${mapPrefix}-street-btn`).classList.remove('active');
+        document.getElementById(`${mapPrefix}-sat-btn`).classList.remove('active');
+        if (styleName.includes('satellite')) document.getElementById(`${mapPrefix}-sat-btn`).classList.add('active');
+        else document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
+    }
+
+    // Mapbox Geocoding (Address Search)
+    function geocodeAddress() {
+        const address = document.getElementById('loc_address_search').value;
+        if (!address) return alert("Please enter an address to search.");
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const [lng, lat] = data.features[0].center;
+                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
+                    setAdminMarker(lat, lng);
+                } else alert("Address not found.");
+            });
+    }
+
+    function setAdminMarker(lat, lng) {
+        document.getElementById('loc_lat').value = lat.toFixed(6);
+        document.getElementById('loc_lng').value = lng.toFixed(6);
+        if (adminMarker) adminMarker.remove(); 
+        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).style.display = 'block';
+        btn.classList.add('active');
+        if(tabId === 'dashboard-view' && map) setTimeout(() => map.resize(), 100);
+        if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
+    }
+
+    // Load Data
+    function loadData() {
+        fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
+            const drvSelect = document.getElementById('remove_driver');
+            if(drvSelect) {
+                drvSelect.innerHTML = '<option value="">Select...</option>';
+                data.forEach(d => { drvSelect.innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; });
+            }
+        });
+
+        fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
+            globalLocations = data;
+            const locList = document.getElementById('list-locations');
+            const trkLoc = document.getElementById('trk_loc');
+            const remLoc = document.getElementById('remove_location');
+            
+            if(trkLoc) trkLoc.innerHTML = '';
+            if(remLoc) remLoc.innerHTML = '<option value="">Select...</option>';
+            if(locList) locList.innerHTML = '';
+            
+            data.forEach(loc => {
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>Type: ${loc.type}`);
+                const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(popup).addTo(map);
+
+                if(locList) locList.innerHTML += `<li class="list-item" onclick="zoomToMax(${loc.lat}, ${loc.lng}, ${data.indexOf(loc)}, 'loc')"><b>${loc.name}</b></li>`;
+                if(trkLoc) trkLoc.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
+                if(remLoc) remLoc.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
+                loc.markerRef = marker;
+            });
+        });
+
+        fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(data => {
+            globalTrucks = data;
+            const trkList = document.getElementById('list-trucks');
+            const resButtons = document.getElementById('resource-buttons');
+            const remTrk = document.getElementById('remove_truck');
+            
+            if(trkList) trkList.innerHTML = '';
+            if(resButtons) resButtons.innerHTML = '';
+            if(remTrk) remTrk.innerHTML = '<option value="">Select...</option>';
+            
+            data.forEach(t => {
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Driver: ${t.current_driver_name}`);
+                const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(popup).addTo(map);
+
+                if(trkList) trkList.innerHTML += `<li class="list-item" onclick="zoomToMax(${t.lat}, ${t.lng}, ${data.indexOf(t)}, 'trk')"><b>${t.truck_name}</b> (${t.license_plate})</li>`;
+                if(remTrk) remTrk.innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+
+                if(t.resource_excel_url && resButtons) {
+                    resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                }
+                t.markerRef = marker;
+            });
+        });
+
+        fetch(`${API_URL}/activity-logs/`).then(res=>res.json()).then(data => {
+            const tbody = document.getElementById('activity-table');
+            if(tbody) {
+                tbody.innerHTML = '';
+                data.forEach(log => {
+                    const date = new Date(log.timestamp).toLocaleString();
+                    tbody.innerHTML += `<tr><td>${date}</td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
+                });
+            }
+        });
+    }
+
+    function zoomToMax(lat, lng, index, type) {
+        map.flyTo({ center: [lng, lat], zoom: 18, essential: true });
+        if (type === 'loc' && globalLocations[index]) globalLocations[index].markerRef.togglePopup();
+        else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
+    }
+
+    // Forms
+    function removeEntity(type, selectId) {
+        const id = document.getElementById(selectId).value;
+        if(!id) return;
+        if(confirm("Are you sure you want to delete this?")) {
+            fetch(`${API_URL}/${type}/${id}`, { method: 'DELETE' }).then(() => location.reload());
+        }
+    }
+
+    function submitTruck(action) {
+        const payload = {
+            truck_name: document.getElementById('trk_name').value,
+            license_plate: document.getElementById('trk_plate').value,
+            purpose: document.getElementById('trk_purpose').value,
+            start_fuel: parseFloat(document.getElementById('trk_fuel').value || 0),
+            location_id: parseInt(document.getElementById('trk_loc').value || 1),
+            resource_excel_url: document.getElementById('trk_excel').value,
+            general_notes: document.getElementById('trk_notes').value
+        };
+
+        if (action === 'add') {
+            fetch(`${API_URL}/trucks/`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
+            .then(() => location.reload());
+        } else {
+            const existing = globalTrucks.find(t => t.truck_name === payload.truck_name);
+            if(!existing) return alert("Truck name not found for update!");
+            fetch(`${API_URL}/trucks/${existing.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
+            .then(() => location.reload());
+        }
+    }
+
+    document.getElementById('locationForm')?.addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(`${API_URL}/locations/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('loc_name').value,
+                type: document.getElementById('loc_type').value,
+                lat: parseFloat(document.getElementById('loc_lat').value),
+                lng: parseFloat(document.getElementById('loc_lng').value)
+            })
+        }).then(() => location.reload());
+    });
+</script>
+
+</body>
+</html>
