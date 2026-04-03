@@ -128,7 +128,7 @@ class TripLogCreate(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "Fleet Tracker API is live!"}
+    return {"message": "CRS Warehouse Dashboard API is live!"}
 
 # NEW: SECURE CONFIG ENDPOINT
 @app.get("/config/")
