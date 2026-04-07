@@ -118,8 +118,29 @@
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
         .modal-content { background: var(--surface); padding: 20px; border-radius: 12px; width: 100%; max-width: 350px; }
+    
+        /* SERVER LOADING OVERLAY */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg, #f4f4f9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #ccc;
+            border-top-color: #007bff; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
+        #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
     </style>
 </head>
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="loading-text">Connecting to Server...</div>
+    <div id="loading-subtext"></div>
+</div>
 <body>
 
 <header>CRS Warehouse Dashboard</header>
