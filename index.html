@@ -197,9 +197,29 @@
     const defaultLngLat = [-79.347015, 43.651070]; 
     let map, adminMap, adminMarker;
 
+    // Smarter Config Fetch with Loading UI
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    const loadingSubtext = document.getElementById('loading-subtext');
+
+    const slowLoadTimer = setTimeout(() => {
+        if(loadingText) loadingText.innerText = "Waking up the database...";
+        if(loadingSubtext) loadingSubtext.innerText = "The server went to sleep. This takes about 50 seconds.";
+    }, 3000);
+
     fetch(`${API_URL}/config/`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error("Server refused connection.");
+            return res.json();
+        })
         .then(config => {
+            // Success! Cancel the timer, hide the overlay, and set the token
+            clearTimeout(slowLoadTimer);
+            if(loadingOverlay) {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 500); 
+            }
+            
             mapboxgl.accessToken = config.mapbox_token;
 
             map = new mapboxgl.Map({
@@ -216,7 +236,11 @@
 
             map.on('load', () => loadData());
         })
-        .catch(err => console.error("Could not load config from backend", err));
+        .catch(err => {
+            console.error("Could not load config from backend", err);
+            if(loadingText) loadingText.innerText = "Error connecting to server.";
+            if(loadingSubtext) loadingSubtext.innerText = "Please refresh the page.";
+        });
 
     function setStyle(targetMap, styleName, mapPrefix) {
         targetMap.setStyle('mapbox://styles/mapbox/' + styleName);
