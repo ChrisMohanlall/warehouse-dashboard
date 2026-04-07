@@ -50,9 +50,31 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .mapboxgl-popup-content { padding: 10px 15px; font-family: Arial; }
+
+        /* SERVER LOADING OVERLAY */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg, #f4f4f9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #ccc;
+            border-top-color: #007bff; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
+        #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
     </style>
 </head>
 <body>
+
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="loading-text">Connecting to Server...</div>
+    <div id="loading-subtext"></div>
+</div>
 
 <nav>
     <button onclick="switchTab('dashboard-view', this)" class="active">Map Dashboard</button>
