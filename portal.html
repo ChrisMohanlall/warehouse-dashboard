@@ -295,35 +295,63 @@
     }
 
     function loadData() {
-        fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
-            const sels = ['trip_driver', 'fuel_driver'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>');
-            data.forEach(d => {
-                sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`);
-            });
-        });
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        const loadingSubtext = document.getElementById('loading-subtext');
 
-        fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
-            globalLocations = data;
-            const sels = ['trip_location'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select parked location...</option>');
-            data.forEach(loc => {
-                sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name}</option>`);
-            });
-        });
+        const slowLoadTimer = setTimeout(() => {
+            if(loadingText) loadingText.innerText = "Waking up the database...";
+            if(loadingSubtext) loadingSubtext.innerText = "The server went to sleep. This takes about 50 seconds.";
+        }, 3000);
 
-        fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(data => {
+        // Fetch all 3 lists at the same time and wait for them to finish
+        Promise.all([
+            fetch(`${API_URL}/drivers/`).then(res => res.json()),
+            fetch(`${API_URL}/locations/`).then(res => res.json()),
+            fetch(`${API_URL}/trucks/`).then(res => res.json())
+        ])
+        .then(([driversData, locationsData, trucksData]) => {
+            
+            // Hide the loading screen
+            clearTimeout(slowLoadTimer);
+            if(loadingOverlay) {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            }
+
+            // 1. Populate Drivers
+            const drvSels = ['trip_driver', 'fuel_driver'];
+            drvSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>');
+            driversData.forEach(d => {
+                drvSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`);
+            });
+
+            // 2. Populate Locations
+            globalLocations = locationsData;
+            const locSels = ['trip_location'];
+            locSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select parked location...</option>');
+            locationsData.forEach(loc => {
+                locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name}</option>`);
+            });
+
+            // 3. Populate Trucks
             const resButtons = document.getElementById('resource-buttons');
-            const sels = ['trip_truck', 'fuel_truck'];
-            sels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select truck...</option>');
+            const trkSels = ['trip_truck', 'fuel_truck'];
+            trkSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select truck...</option>');
             resButtons.innerHTML = '';
             
-            data.forEach(t => {
-                sels.forEach(id => document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
+            trucksData.forEach(t => {
+                trkSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
                 if(t.resource_excel_url) {
                     resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`;
                 }
             });
+
+        })
+        .catch(err => {
+            console.error("Connection error", err);
+            if(loadingText) loadingText.innerText = "Connection Failed";
+            if(loadingSubtext) loadingSubtext.innerText = "Could not reach the server. Please check your signal and refresh.";
         });
     }
 
