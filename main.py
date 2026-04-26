@@ -126,6 +126,12 @@ class TripLogCreate(BaseModel):
 def root():
     return {"message": "CRS Warehouse Dashboard API is live!"}
 
+@app.get("/keep-awake/")
+def keep_awake(db: Session = Depends(get_db)):
+    # This tiny query forces the database to stay active
+    db.query(DBLocation).first()
+    return {"status": "Render API and Database are both awake!"}
+
 @app.get("/config/")
 def get_config():
     token = os.getenv("MAPBOX_API_KEY")
