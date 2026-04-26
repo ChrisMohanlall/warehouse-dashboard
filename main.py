@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 import datetime
 
-# Load hidden variables from the .env file
 load_dotenv()
 
 # --- DATABASE SETUP ---
@@ -44,6 +43,7 @@ class DBTruck(Base):
     truck_name = Column(String, unique=True, index=True)
     license_plate = Column(String)
     purpose = Column(String)
+    status = Column(String, default="Parked") # NEW STATUS COLUMN
     current_driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
     lat = Column(Float)
     lng = Column(Float)
@@ -105,8 +105,8 @@ def get_db():
 
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; lat: float; lng: float
-class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
-class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; general_notes: str = ""; resource_excel_url: str = ""
+class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
+class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 
 class TripLogCreate(BaseModel): 
@@ -128,7 +128,6 @@ def root():
 
 @app.get("/keep-awake/")
 def keep_awake(db: Session = Depends(get_db)):
-    # This tiny query forces the database to stay active
     db.query(DBLocation).first()
     return {"status": "Render API and Database are both awake!"}
 
@@ -187,7 +186,7 @@ def get_trucks(db: Session = Depends(get_db)):
 @app.post("/trucks/")
 def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == truck.location_id).first()
-    new_truck = DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, lat=loc.lat, lng=loc.lng, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url)
+    new_truck = DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url)
     db.add(new_truck); db.commit()
     log_activity(db, "Intake Truck", f"Added new truck: {truck.truck_name} ({truck.license_plate}).")
     return {"message": "Truck added!"}
@@ -198,9 +197,10 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
     truck.license_plate = truck_update.license_plate
     truck.purpose = truck_update.purpose
     truck.start_fuel = truck_update.start_fuel
+    truck.status = truck_update.status
     truck.general_notes = truck_update.general_notes
     truck.resource_excel_url = truck_update.resource_excel_url
-    log_activity(db, "Update Truck", f"Repurposed truck: {truck.truck_name}. New plate: {truck.license_plate}.")
+    log_activity(db, "Update Truck", f"Updated truck: {truck.truck_name}. Status: {truck.status}.")
     db.commit()
     return {"message": "Truck updated!"}
 
@@ -227,6 +227,7 @@ def create_trip_log(log: TripLogCreate, db: Session = Depends(get_db)):
         truck.lng = loc.lng
         
     truck.current_driver_id = log.driver_id
+    truck.status = "Parked" # Automatically assume parked when a trip ends
     
     log_activity(db, "Trip Log", f"Truck {truck.truck_name} parked near {loc.name}.")
     db.commit()
