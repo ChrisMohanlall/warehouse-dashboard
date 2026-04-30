@@ -189,6 +189,24 @@
             </div>
         </div>
     </div>
+
+    <div id="schedule-view" class="view-section">
+        <div class="card" style="max-width: 100%;">
+            <h2>Race Schedule</h2>
+            <p style="color: #666; font-size: 0.9rem;">Access the master logistics schedule below.</p>
+            <input type="text" id="master_schedule_link" placeholder="Paste link to Master Schedule...">
+            <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
+        </div>
+    </div>
+
+    <div id="resources-view" class="view-section">
+        <div class="card" style="max-width: 100%;">
+            <h2>Truck Resource Sheets</h2>
+            <p style="color: #666; font-size: 0.9rem;">Select your truck to open its inventory sheet.</p>
+            <div id="resource-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+    </div>
+    
 </div>
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
