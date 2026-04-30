@@ -394,6 +394,18 @@
         if (adminMarker) adminMarker.remove();
     }
 
+    function removeEntity(type, selectId) {
+        const id = document.getElementById(selectId).value;
+        if(!id) return;
+        if(confirm("Are you sure you want to delete this?")) {
+            fetch(`${API_URL}/${type}/${id}`, { method: 'DELETE' })
+            .then(() => {
+                alert("Deleted successfully.");
+                loadData();
+            });
+        }
+    }
+
     function submitTruck(action) {
         const payload = {
             truck_name: document.getElementById('trk_name').value,
