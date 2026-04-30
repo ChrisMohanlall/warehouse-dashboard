@@ -94,9 +94,6 @@
                     <h3>Trucks</h3>
                     <select id="filter-trucks" class="filter-select" onchange="renderSidebarLists()">
                         <option value="All">All Statuses</option>
-                        <option value="Parked">Parked</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Docked">Docked</option>
                     </select>
                 </div>
                 <ul id="list-trucks" class="list-group"></ul>
@@ -122,6 +119,8 @@
 
     <div id="admin-view" class="view-section">
         <div class="form-grid">
+            
+            <!-- LOCATIONS CARD -->
             <div class="card" id="location-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
                     <h2 style="border:none; margin:0; padding:0;">Locations</h2>
@@ -133,19 +132,14 @@
 
                 <div id="loc-manage-selector" style="display:none; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #ccc;">
                     <label>Select Location to Edit:</label>
-                    <select id="manage_loc_select" onchange="loadLocForEdit()">
-                        <option value="">Select...</option>
-                    </select>
+                    <select id="manage_loc_select" onchange="loadLocForEdit()"><option value="">Select...</option></select>
                 </div>
 
                 <form id="locationForm">
                     <input type="hidden" id="edit_loc_id" value="">
-                    
-                    <label>Location Name:</label>
-                    <input type="text" id="loc_name" required>
-                    
-                    <label>Sub Location (Type):</label>
-                    <input type="text" id="loc_type" required>
+                    <label>Location Name:</label><input type="text" id="loc_name" required>
+                    <label>Sub Location (Type):</label><input type="text" id="loc_type" required>
+                    <label>Pin Icon:</label><select id="loc_icon_select"></select>
                     
                     <div id="loc_desc_wrapper" style="display:none; background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-top: 10px;">
                         <b>Driver Notes:</b> <span id="loc_desc_text"></span>
@@ -154,27 +148,16 @@
                     <label>Search by Address:</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" id="loc_address_search" placeholder="e.g. 123 Main St, Toronto">
-                        <button type="button" class="btn btn-blue btn-inline" onclick="geocodeAddress()">Search</button>
+                        <button type="button" class="btn btn-blue btn-inline" onclick="geocodeAddress('loc_lat', 'loc_lng')">Search</button>
                     </div>
 
                     <div id="admin-map-wrapper">
-                        <div class="map-style-toggle">
-                            <button id="admin-street-btn" class="active" onclick="setStyle(adminMap, 'streets-v12', 'admin')">Street</button>
-                            <button id="admin-sat-btn" onclick="setStyle(adminMap, 'satellite-streets-v12', 'admin')">Satellite</button>
-                        </div>
                         <div id="admin-map"></div>
                     </div>
-                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Click the map directly to drop a pin.</div>
-
+                    
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <div style="flex: 1;">
-                            <label>Latitude:</label>
-                            <input type="number" id="loc_lat" step="any">
-                        </div>
-                        <div style="flex: 1;">
-                            <label>Longitude:</label>
-                            <input type="number" id="loc_lng" step="any">
-                        </div>
+                        <div style="flex: 1;"><label>Latitude:</label><input type="number" id="loc_lat" step="any"></div>
+                        <div style="flex: 1;"><label>Longitude:</label><input type="number" id="loc_lng" step="any"></div>
                     </div>
                     
                     <button type="button" class="btn btn-green" id="btn-save-loc" onclick="submitLocation()">Save New Location</button>
@@ -182,38 +165,42 @@
                 </form>
             </div>
 
-            <div class="card">
-                <h2>Truck Management</h2>
+            <!-- TRUCKS CARD -->
+            <div class="card" id="truck-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2 style="border:none; margin:0; padding:0;">Trucks</h2>
+                    <div>
+                        <button class="btn btn-inline btn-blue" id="trk-tab-add" onclick="setTrkMode('add')">Add New</button>
+                        <button class="btn btn-inline" id="trk-tab-manage" style="background:#ddd; color:#333;" onclick="setTrkMode('manage')">Manage</button>
+                    </div>
+                </div>
+
+                <div id="trk-manage-selector" style="display:none; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #ccc;">
+                    <label>Select Truck to Edit:</label>
+                    <select id="manage_trk_select" onchange="loadTrkForEdit()"><option value="">Select...</option></select>
+                </div>
+
                 <form id="truckForm">
+                    <input type="hidden" id="edit_trk_id" value="">
                     <label>Truck Name:</label><input type="text" id="trk_name" required>
                     <label>License Plate:</label><input type="text" id="trk_plate" required>
                     <label>Purpose:</label><input type="text" id="trk_purpose" required>
+                    <label>Pin Icon:</label><select id="trk_icon_select"></select>
                     <label>Status:</label>
                     <select id="trk_status">
                         <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
                     </select>
                     <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
-                    <label>Initial Location:</label><select id="trk_loc"></select>
+                    <div id="trk_initial_loc_wrapper"><label>Initial Location:</label><select id="trk_loc"></select></div>
                     <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
                     <label>General Notes:</label><textarea id="trk_notes"></textarea>
                     
-                    <div style="display:flex; gap:10px;">
-                        <button type="button" class="btn btn-green" onclick="submitTruck('add')">Intake New</button>
-                        <button type="button" class="btn btn-blue" onclick="submitTruck('update')">Update Existing</button>
-                    </div>
+                    <button type="button" class="btn btn-green" id="btn-save-trk" onclick="submitTruck()">Intake New Truck</button>
+                    <button type="button" class="btn btn-orange" id="btn-update-trk" onclick="updateTruck()" style="display:none;">Save Changes</button>
                 </form>
             </div>
 
-            <div class="card">
-                <h2>Remove Assets</h2>
-                <label>Remove Driver:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_driver"></select><button class="btn btn-red btn-inline" onclick="removeEntity('drivers', 'remove_driver')">Remove</button></div>
-                <label>Remove Truck:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_truck"></select><button class="btn btn-red btn-inline" onclick="removeEntity('trucks', 'remove_truck')">Remove</button></div>
-                <label>Remove Location:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_location"></select><button class="btn btn-red btn-inline" onclick="removeEntity('locations', 'remove_location')">Remove</button></div>
-            </div>
-
+            <!-- ACTIVITY LOG -->
             <div class="card" style="grid-column: span 2;">
                 <h2>Activity Log</h2>
                 <table>
@@ -224,39 +211,44 @@
         </div>
     </div>
 
-    <div id="schedule-view" class="view-section">
-        <div class="card" style="max-width: 100%;">
-            <h2>Race Schedule</h2>
-            <p style="color: #666; font-size: 0.9rem;">Access the master logistics schedule below.</p>
-            <input type="text" id="master_schedule_link" placeholder="Paste link to Master Schedule...">
-            <button class="btn btn-blue" onclick="window.open($('master_schedule_link').value, '_blank')">Open Schedule</button>
-        </div>
-    </div>
-
-    <div id="resources-view" class="view-section">
-        <div class="card" style="max-width: 100%;">
-            <h2>Truck Resource Sheets</h2>
-            <p style="color: #666; font-size: 0.9rem;">Select your truck to open its inventory sheet.</p>
-            <div id="resource-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
-        </div>
-    </div>
-
+    <!-- SETTINGS VIEW -->
     <div id="settings-view" class="view-section">
         <div class="form-grid">
             <div class="card">
-                <h2>Event Settings</h2>
+                <h2>Event Configuration</h2>
                 <label>Current Race / Event Name:</label>
-                <input type="text" id="event_name_input" placeholder="e.g., Montreal Grand Prix">
-                <button class="btn btn-blue" onclick="saveEventName()">Update Banner</button>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="event_name_input">
+                    <button class="btn btn-blue btn-inline" style="margin-top:0;" onclick="saveEventName()">Update</button>
+                </div>
+
+                <hr style="margin:20px 0; border:1px solid #eee;">
+                
+                <h3>Icon Library</h3>
+                <label>Add New Icon URL:</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="url" id="new_icon_url" placeholder="https://...">
+                    <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addIcon()">Add</button>
+                </div>
+                <ul id="icon_list" class="list-group" style="margin-top:10px;"></ul>
+
+                <hr style="margin:20px 0; border:1px solid #eee;">
+
+                <h3>Race Routes</h3>
+                <p style="font-size:0.85rem; color:#666;">Provide Google My Maps (.kml/.kmz) or Mapbox GeoJSON links.</p>
+                <label>Add New Route URL:</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="url" id="new_route_url" placeholder="https://...">
+                    <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addRoute()">Add</button>
+                </div>
+                <ul id="route_list" class="list-group" style="margin-top:10px;"></ul>
             </div>
 
             <div class="card" style="background: #fff3cd; border: 1px solid #ffc107;">
-                <h2 style="color: #856404; border-bottom: 2px solid #ffeeba;">⚠️ DANGER ZONE: Factory Reset</h2>
-                <p style="color: #666; font-size: 0.95rem;">This will permanently delete all trucks, locations, drivers, and logs to prepare for a brand new race weekend. <b>This cannot be undone.</b></p>
-                <p style="color: #856404; font-weight: bold; margin-top: 15px;">Slide to unlock reset button:</p>
-                
+                <h2 style="color: #856404;">⚠️ DANGER ZONE: Full Reset</h2>
+                <p style="color: #666; font-size: 0.95rem;">This will permanently delete all data to prepare for a new race weekend. <b>Cannot be undone.</b></p>
                 <input type="range" id="wipe-slider" min="0" max="100" value="0" oninput="checkWipeSlider()" style="width: 100%; height: 30px; cursor: pointer;">
-                <button id="btn-wipe" class="btn btn-red" style="display: none; width: 100%; font-size: 1.2rem; padding: 15px; margin-top: 20px; animation: fadeIn 0.3s;" onclick="executeWipe()">🚨 CONFIRM COMPLETE WIPE 🚨</button>
+                <button id="btn-wipe" class="btn btn-red" style="display: none; width: 100%; font-size: 1.2rem; padding: 15px; margin-top: 20px;" onclick="executeWipe()">🚨 CONFIRM WIPE 🚨</button>
             </div>
         </div>
     </div>
@@ -266,11 +258,8 @@
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     const defaultLngLat = [-79.347015, 43.651070]; 
-    
-    // UTILITY: Fast DOM selector
     const $ = id => document.getElementById(id);
     
-    // UTILITY: Centralized API Fetcher
     async function apiCall(endpoint, method = 'GET', body = null) {
         const options = { method, headers: { 'Content-Type': 'application/json' } };
         if (body) options.body = JSON.stringify(body);
@@ -279,317 +268,164 @@
         return res.json();
     }
 
-    let globalTrucks = [], globalLocations = [], markers = []; 
+    let globalTrucks = [], globalLocations = [], globalIcons = [], globalRoutes = [], markers = []; 
     let map, adminMap, adminMarker;
 
-    // Initialize Mapbox 
     apiCall('/config/').then(config => {
         $('loading-overlay').style.display = 'none';
         mapboxgl.accessToken = config.mapbox_token;
-
         map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12 });
-        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-
         adminMap = new mapboxgl.Map({ container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 });
-        adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-        adminMap.on('click', (e) => setAdminMarker(e.lngLat.lat, e.lngLat.lng));
-
+        adminMap.on('click', (e) => setAdminMarker(e.lngLat.lat, e.lngLat.lng, 'loc_lat', 'loc_lng'));
         map.on('load', () => loadData());
     });
-
-    function setStyle(targetMap, styleName, mapPrefix) {
-        targetMap.setStyle(`mapbox://styles/mapbox/${styleName}`);
-        $(`${mapPrefix}-street-btn`).classList.remove('active');
-        $(`${mapPrefix}-sat-btn`).classList.remove('active');
-        $(styleName.includes('satellite') ? `${mapPrefix}-sat-btn` : `${mapPrefix}-street-btn`).classList.add('active');
-    }
 
     function switchTab(tabId, btn) {
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
         document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
         $(tabId).style.display = 'block';
-        btn.classList.add('active');
+        if(btn) btn.classList.add('active');
         if(tabId === 'dashboard-view' && map) setTimeout(() => map.resize(), 100);
         if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
     }
 
-    function geocodeAddress() {
-        const address = $('loc_address_search').value;
-        if (!address) return;
-        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.features && data.features.length > 0) {
-                    const [lng, lat] = data.features[0].center;
-                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
-                    setAdminMarker(lat, lng);
-                }
-            });
-    }
-
-    function setAdminMarker(lat, lng) {
-        $('loc_lat').value = lat.toFixed(6);
-        $('loc_lng').value = lng.toFixed(6);
+    function setAdminMarker(lat, lng, latId, lngId) {
+        $(latId).value = lat.toFixed(6); $(lngId).value = lng.toFixed(6);
         if (adminMarker) adminMarker.remove(); 
         adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
     }
 
-    function renderSidebarLists() {
-        const trkList = $('list-trucks'), locList = $('list-locations');
-        const trkFilter = $('filter-trucks').value, locFilter = $('filter-locations').value;
-        
-        trkList.innerHTML = ''; locList.innerHTML = '';
-
-        globalLocations.filter(loc => locFilter === 'All' || loc.type === locFilter).forEach(loc => {
-            const badge = loc.lat === null ? '<span class="status-badge status-undefined">Missing Coords</span>' : '';
-            locList.innerHTML += `<li class="list-item" onclick="handleLocationClick(${globalLocations.indexOf(loc)})"><b>${loc.name}</b> - <small>${loc.type}</small> ${badge}</li>`;
-        });
-
-        globalTrucks.filter(t => trkFilter === 'All' || t.status === trkFilter).forEach(t => {
-            const badgeClass = t.status === 'In Transit' ? 'status-transit' : (t.status === 'Docked' ? 'status-docked' : 'status-parked');
-            const locString = t.is_location_undefined ? `📍 ${t.current_location_name} (Missing Coords)` : `📍 ${t.current_location_name}`;
-            trkList.innerHTML += `<li class="list-item" onclick="zoomToMax(${t.lat}, ${t.lng}, ${globalTrucks.indexOf(t)}, 'trk')"><b>${t.truck_name}</b> <span class="status-badge ${badgeClass}">${t.status || 'Parked'}</span><br><span class="location-text">${locString}</span></li>`;
-        });
-    }
-
-    // High-Efficiency Async Data Loader
     async function loadData() {
         markers.forEach(m => m.remove()); markers = [];
 
-        // Fetch everything simultaneously instead of one by one
-        const [settings, drivers, locations, trucks, logs] = await Promise.all([
-            apiCall('/settings/race_name'),
-            apiCall('/drivers/'),
-            apiCall('/locations/'),
-            apiCall('/trucks/'),
-            apiCall('/activity-logs/')
+        const [settings, drivers, locations, trucks, logs, icons, routes] = await Promise.all([
+            apiCall('/settings/race_name'), apiCall('/drivers/'), apiCall('/locations/'), 
+            apiCall('/trucks/'), apiCall('/activity-logs/'), 
+            apiCall('/settings/list/icons'), apiCall('/settings/list/routes')
         ]);
 
-        // 1. Settings
-        $('main-banner').innerText = settings.value;
-        $('event_name_input').value = settings.value;
+        $('main-banner').innerText = settings.value; $('event_name_input').value = settings.value;
+        globalIcons = icons.items; globalRoutes = routes.items;
 
-        // 2. Drivers
-        if($('remove_driver')) {
-            $('remove_driver').innerHTML = '<option value="">Select...</option>';
-            drivers.forEach(d => { $('remove_driver').innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; });
-        }
+        // Populate Icon Dropdowns & Lists
+        ['loc_icon_select', 'trk_icon_select'].forEach(id => {
+            $(id).innerHTML = '<option value="">Default Teardrop</option>';
+            globalIcons.forEach(url => $(id).innerHTML += `<option value="${url}">Image: ...${url.slice(-15)}</option>`);
+        });
+        
+        $('icon_list').innerHTML = '';
+        globalIcons.forEach((url, i) => $('icon_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between;"><span><img src="${url}" style="width:20px; vertical-align:middle; margin-right:10px;"> ...${url.slice(-20)}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('icons', ${i})">X</button></li>`);
 
-        // 3. Locations
-        globalLocations = locations;
+        $('route_list').innerHTML = '';
+        globalRoutes.forEach((url, i) => {
+            $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between;"><span>...${url.slice(-30)}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
+            drawRouteOnMap(url, `route-${i}`);
+        });
+
+        globalLocations = locations; globalTrucks = trucks;
+        
+        // Build map markers
+        locations.forEach(loc => buildMarker(loc, 'loc'));
+        trucks.forEach(trk => buildMarker(trk, 'trk'));
+        
+        renderSidebarLists();
+        
+        // Populate Admin Edit Dropdowns
         if($('manage_loc_select')) {
             $('manage_loc_select').innerHTML = '<option value="">Select...</option>';
-            locations.forEach(loc => {
-                $('manage_loc_select').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
-            });
+            locations.forEach(l => $('manage_loc_select').innerHTML += `<option value="${l.id}">${l.name}</option>`);
         }
-        if($('trk_loc')) $('trk_loc').innerHTML = '';
-        if($('remove_location')) $('remove_location').innerHTML = '<option value="">Select...</option>';
-        
-        const locFilterDropdown = $('filter-locations');
-        const currentFilterVal = locFilterDropdown.value;
-        locFilterDropdown.innerHTML = '<option value="All">All Types</option>';
-        
-        const uniqueTypes = [...new Set(locations.map(l => l.type))];
-        uniqueTypes.forEach(type => { locFilterDropdown.innerHTML += `<option value="${type}">${type}</option>`; });
-        locFilterDropdown.value = uniqueTypes.includes(currentFilterVal) ? currentFilterVal : "All";
-        
-        locations.forEach(loc => {
-            if($('trk_loc')) $('trk_loc').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
-            if($('remove_location')) $('remove_location').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
-            if(loc.lat !== null) {
-                const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>${loc.type}`)).addTo(map);
-                loc.markerRef = marker; markers.push(marker);
-            }
-        });
-
-        // 4. Trucks
-        globalTrucks = trucks;
-        if($('remove_truck')) $('remove_truck').innerHTML = '<option value="">Select...</option>';
-        if($('resource-buttons')) $('resource-buttons').innerHTML = '';
-
-        trucks.forEach(t => {
-            if($('remove_truck')) $('remove_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
-            if(t.resource_excel_url && $('resource-buttons')) $('resource-buttons').innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
-            if(t.lat !== null) {
-                const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Status: ${t.status}<br>Driver: ${t.current_driver_name}`)).addTo(map);
-                t.markerRef = marker; markers.push(marker);
-            }
-        });
-        renderSidebarLists();
-
-        // 5. Activity Logs
-        if($('activity-table')) {
-            $('activity-table').innerHTML = '';
-            logs.forEach(log => {
-                const date = new Date(log.timestamp).toLocaleString();
-                $('activity-table').innerHTML += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
-            });
+        if($('manage_trk_select')) {
+            $('manage_trk_select').innerHTML = '<option value="">Select...</option>';
+            trucks.forEach(t => $('manage_trk_select').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
         }
     }
 
-    function handleLocationClick(index) {
-        const loc = globalLocations[index];
-        if (loc.lat === null) {
-            switchTab('admin-view', document.querySelectorAll('nav button')[1]);
-            setLocMode('manage');
-            $('manage_loc_select').value = loc.id;
-            loadLocForEdit();
-            alert(`Please use the map to drop a pin for ${loc.name} - ${loc.type}.`);
+    function buildMarker(entity, type) {
+        if (entity.lat === null) return;
+        let el = document.createElement('div');
+        if (entity.icon_url) {
+            el.style.width = '32px'; el.style.height = '32px';
+            el.style.backgroundImage = `url('${entity.icon_url}')`;
+            el.style.backgroundSize = 'cover';
         } else {
-            zoomToMax(loc.lat, loc.lng, index, 'loc');
+            el = null; // Use default Mapbox marker
+        }
+        
+        let html = type === 'loc' ? `<b>${entity.name}</b><br>${entity.type}` : `<b>${entity.truck_name}</b><br>Status: ${entity.status}<br>Driver: ${entity.current_driver_name}`;
+        
+        const marker = el ? new mapboxgl.Marker(el) : new mapboxgl.Marker();
+        marker.setLngLat([entity.lng, entity.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html)).addTo(map);
+        entity.markerRef = marker; markers.push(marker);
+    }
+
+    function drawRouteOnMap(url, layerId) {
+        if (!map.loaded()) { map.once('load', () => drawRouteOnMap(url, layerId)); return; }
+        // Simple KML/GeoJSON parser simulation. Note: For complex KML like Google Maps, a KML-to-GeoJSON parser library is highly recommended.
+        if (!map.getSource(layerId)) {
+            map.addSource(layerId, { type: 'geojson', data: url });
+            map.addLayer({ id: layerId, type: 'line', source: layerId, paint: { 'line-color': '#FF5733', 'line-width': 4 }});
         }
     }
 
+    // --- TAB MANAGEMENT ---
     function setLocMode(mode) {
         if(mode === 'add') {
-            $('loc-tab-add').className = 'btn btn-inline btn-blue';
-            $('loc-tab-manage').className = 'btn btn-inline';
-            $('loc-tab-manage').style.background = '#ddd'; $('loc-tab-manage').style.color = '#333';
-            $('loc-manage-selector').style.display = 'none';
-            resetLocForm();
+            $('loc-tab-add').className = 'btn btn-inline btn-blue'; $('loc-tab-manage').className = 'btn btn-inline'; $('loc-tab-manage').style.background = '#ddd'; $('loc-manage-selector').style.display = 'none'; resetLocForm();
         } else {
-            $('loc-tab-manage').className = 'btn btn-inline btn-blue';
-            $('loc-tab-manage').style.background = ''; $('loc-tab-manage').style.color = '';
-            $('loc-tab-add').className = 'btn btn-inline';
-            $('loc-tab-add').style.background = '#ddd'; $('loc-tab-add').style.color = '#333';
-            $('loc-manage-selector').style.display = 'block';
-            resetLocForm();
-            $('btn-save-loc').style.display = 'none';
+            $('loc-tab-manage').className = 'btn btn-inline btn-blue'; $('loc-tab-manage').style.background = ''; $('loc-tab-add').className = 'btn btn-inline'; $('loc-tab-add').style.background = '#ddd'; $('loc-manage-selector').style.display = 'block'; resetLocForm(); $('btn-save-loc').style.display = 'none';
         }
     }
 
+    function setTrkMode(mode) {
+        if(mode === 'add') {
+            $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('trk_initial_loc_wrapper').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
+        } else {
+            $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('trk_initial_loc_wrapper').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
+        }
+    }
+
+    // --- DATA SUBMISSION ---
+    async function addIcon() { globalIcons.push($('new_icon_url').value); await apiCall('/settings/list/icons', 'PUT', { items: globalIcons }); loadData(); $('new_icon_url').value = ''; }
+    async function addRoute() { globalRoutes.push($('new_route_url').value); await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes }); loadData(); $('new_route_url').value = ''; }
+    async function removeListSetting(type, index) { 
+        if(type==='icons') globalIcons.splice(index, 1); else globalRoutes.splice(index, 1);
+        await apiCall(`/settings/list/${type}`, 'PUT', { items: type==='icons' ? globalIcons : globalRoutes }); loadData(); 
+    }
+
+    async function submitLocation() {
+        await apiCall('/locations/', 'POST', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value), user: "Admin" });
+        alert("Location saved!"); resetLocForm(); loadData();
+    }
+    
     function loadLocForEdit() {
-        const id = $('manage_loc_select').value;
-        if(!id) { resetLocForm(); $('btn-save-loc').style.display = 'none'; return; }
-
-        const loc = globalLocations.find(l => l.id == id);
+        const loc = globalLocations.find(l => l.id == $('manage_loc_select').value);
         if(!loc) return;
-
-        $('edit_loc_id').value = loc.id;
-        $('loc_name').value = loc.name;
-        $('loc_type').value = loc.type;
-
-        if(loc.description) {
-            $('loc_desc_wrapper').style.display = 'block';
-            $('loc_desc_text').innerText = loc.description;
-        } else {
-            $('loc_desc_wrapper').style.display = 'none';
-        }
-
-        if(loc.lat !== null && loc.lng !== null) {
-            $('loc_lat').value = loc.lat;
-            $('loc_lng').value = loc.lng;
-            adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 });
-            setAdminMarker(loc.lat, loc.lng);
-        } else {
-            $('loc_lat').value = ''; $('loc_lng').value = '';
-            if (adminMarker) adminMarker.remove();
-        }
-
-        $('btn-save-loc').style.display = 'none';
-        $('btn-update-loc').style.display = 'block';
+        $('edit_loc_id').value = loc.id; $('loc_name').value = loc.name; $('loc_type').value = loc.type; $('loc_icon_select').value = loc.icon_url || "";
+        $('loc_lat').value = loc.lat; $('loc_lng').value = loc.lng;
+        $('btn-save-loc').style.display = 'none'; $('btn-update-loc').style.display = 'block';
     }
 
     async function updateLocation() {
-        const latVal = $('loc_lat').value;
-        const lngVal = $('loc_lng').value;
-
-        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', {
-            name: $('loc_name').value,
-            type: $('loc_type').value,
-            lat: latVal ? parseFloat(latVal) : null,
-            lng: lngVal ? parseFloat(lngVal) : null
-        });
-        alert("Location Updated!");
-        loadData();
-        setLocMode('add');
+        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value) });
+        alert("Location Updated!"); setLocMode('add'); loadData();
     }
 
-    function resetLocForm() {
-        $('locationForm').reset();
-        $('edit_loc_id').value = "";
-        $('loc_desc_wrapper').style.display = 'none';
-
-        if($('loc-manage-selector').style.display === 'block') {
-            $('btn-save-loc').style.display = 'none';
-            $('btn-update-loc').style.display = 'none';
-        } else {
-            $('btn-save-loc').style.display = 'block';
-            $('btn-update-loc').style.display = 'none';
-        }
-        if (adminMarker) adminMarker.remove();
-    }
-    
-    function zoomToMax(lat, lng, index, type) {
-        if (lat === null) return;
-        map.flyTo({ center: [lng, lat], zoom: 18, essential: true });
-        if (type === 'loc' && globalLocations[index]) globalLocations[index].markerRef.togglePopup();
-        else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
+    async function submitTruck() {
+        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
+        alert("Truck created!"); $('truckForm').reset(); loadData();
     }
 
-    // Refactored POST/PUT handlers using the central async apiCall wrapper
-    async function submitLocation() {
-        await apiCall('/locations/', 'POST', {
-            name: $('loc_name').value, type: $('loc_type').value,
-            lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value), user: "Admin"
-        });
-        alert("Location saved!"); resetLocForm(); loadData();
+    function loadTrkForEdit() {
+        const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
+        if(!trk) return;
+        $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || ""; $('trk_excel').value = trk.resource_excel_url;
+        $('btn-save-trk').style.display = 'none'; $('btn-update-trk').style.display = 'block';
     }
 
-    async function removeEntity(type, selectId) {
-        const id = $(selectId).value;
-        if(!id) return;
-        if(confirm("Are you sure you want to delete this?")) {
-            await apiCall(`/${type}/${id}`, 'DELETE');
-            alert("Deleted successfully."); loadData();
-        }
-    }
-
-    async function submitTruck(action) {
-        const payload = {
-            truck_name: $('trk_name').value, license_plate: $('trk_plate').value,
-            purpose: $('trk_purpose').value, status: $('trk_status').value,
-            start_fuel: parseFloat($('trk_fuel').value || 0), location_id: parseInt($('trk_loc').value || 1),
-            resource_excel_url: $('trk_excel').value, general_notes: $('trk_notes').value
-        };
-
-        if (action === 'add') {
-            await apiCall('/trucks/', 'POST', payload);
-            alert("New truck created!"); 
-        } else {
-            const existing = globalTrucks.find(t => t.truck_name === payload.truck_name);
-            if(!existing) return alert("Truck name not found for update!");
-            await apiCall(`/trucks/${existing.id}`, 'PUT', payload);
-            alert("Truck updated successfully!"); 
-        }
-        $('truckForm').reset(); loadData();
-    }
-
-    async function saveEventName() {
-        const newName = $('event_name_input').value;
-        await apiCall('/settings/race_name', 'PUT', { value: newName });
-        $('main-banner').innerText = newName;
-        alert("Banner updated!");
-    }
-
-    function checkWipeSlider() {
-        if ($('wipe-slider').value == 100) {
-            $('btn-wipe').style.display = 'block';
-            $('wipe-slider').style.display = 'none'; 
-        }
-    }
-
-    async function executeWipe() {
-        if(confirm("FINAL WARNING: Are you absolutely sure? This will delete ALL data.")) {
-            await apiCall('/wipe/', 'POST');
-            alert("Database successfully wiped for the new event.");
-            location.reload(); 
-        } else {
-            $('wipe-slider').value = 0;
-            $('wipe-slider').style.display = 'block';
-            $('btn-wipe').style.display = 'none';
-        }
+    async function updateTruck() {
+        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
+        alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
 </script>
 </body>
