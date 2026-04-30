@@ -329,7 +329,7 @@
             // 2. Populate Locations
             globalLocations = locationsData;
             const locSels = ['trip_location'];
-            locSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select parked location...</option>');
+            locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`);
             locationsData.forEach(loc => {
                 locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name}</option>`);
             });
