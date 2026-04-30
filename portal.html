@@ -6,164 +6,63 @@
     <title>CRS Driver Portal</title>
 
     <link rel="manifest" href="/manifest.json">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CRS Drivers">
     <link rel="apple-touch-icon" href="/icon-192.png">
 
     <style>
-        :root {
-            --primary: #007bff;
-            --success: #34c759;
-            --danger: #ff3b30;
-            --bg: #f2f2f7; 
-            --surface: #ffffff;
-            --text: #1c1c1e;
-            --text-muted: #8e8e93;
-        }
-
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; padding: 0; 
-            background: var(--bg); 
-            color: var(--text);
-            -webkit-tap-highlight-color: transparent; 
-            user-select: none; 
-            overscroll-behavior-y: none; 
-        }
-
+        :root { --primary: #007bff; --success: #34c759; --danger: #ff3b30; --bg: #f2f2f7; --surface: #ffffff; --text: #1c1c1e; --text-muted: #8e8e93; }
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; user-select: none; overscroll-behavior-y: none; }
         input, select, textarea { user-select: auto; }
-
-        header {
-            background: var(--surface);
-            text-align: center;
-            font-weight: 600;
-            font-size: 17px;
-            position: fixed;
-            top: 0; width: 100%;
-            z-index: 100;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.1);
-            padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; 
-        }
-
-        nav.bottom-bar {
-            position: fixed;
-            bottom: 0; width: 100%;
-            background: var(--surface);
-            display: flex;
-            justify-content: space-around;
-            box-shadow: 0 -1px 0 rgba(0,0,0,0.1);
-            z-index: 100;
-            padding-bottom: env(safe-area-inset-bottom, 0px); 
-        }
-
-        nav.bottom-bar button {
-            background: none; border: none;
-            color: var(--text-muted); font-size: 12px;
-            padding: 12px 0;
-            flex: 1; text-align: center;
-            font-weight: 600;
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }
+        header { background: var(--surface); text-align: center; font-weight: 600; font-size: 17px; position: fixed; top: 0; width: 100%; z-index: 100; box-shadow: 0 1px 0 rgba(0,0,0,0.1); padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; }
+        nav.bottom-bar { position: fixed; bottom: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0px); }
+        nav.bottom-bar button { background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 12px 0; flex: 1; text-align: center; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         nav.bottom-bar button.active { color: var(--primary); }
-        
         nav.bottom-bar button::before { font-size: 20px; }
-        #btn-driver::before { content: "🚚"; }
-        #btn-schedule::before { content: "📅"; }
-        #btn-resources::before { content: "📋"; }
-
-        .container { 
-            padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; 
-            max-width: 600px; margin: 0 auto; 
-        }
-        
+        #btn-driver::before { content: "🚚"; } #btn-schedule::before { content: "📅"; } #btn-resources::before { content: "📋"; }
+        .container { padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; max-width: 600px; margin: 0 auto; }
         .view-section { display: none; animation: fadeIn 0.2s ease-in-out; } 
         #driver-view { display: block; } 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
         .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        .card { 
-            background: var(--surface); 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
-        }
+        .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
-        
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
-        input, select, textarea { 
-            width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; 
-            border: 1px solid #d1d1d6; border-radius: 8px; 
-            font-size: 16px; 
-            background: #fafafa;
-            appearance: none; 
-            -webkit-appearance: none;
-        }
+        input, select, textarea { width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 16px; background: #fafafa; appearance: none; -webkit-appearance: none; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
-        
-        button.btn { 
-            margin-top: 20px; padding: 16px; border: none; border-radius: 10px; 
-            cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white;
-            transition: transform 0.1s; 
-        }
+        button.btn { margin-top: 20px; padding: 16px; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white; transition: transform 0.1s; }
         button.btn:active { transform: scale(0.97); } 
-        
-        .btn-blue { background: var(--primary); } 
-        .btn-green { background: var(--success); } 
-        .btn-red { background: var(--danger); } 
-        .btn-inline { width: auto; padding: 10px 15px; margin-top: 5px; font-size: 14px;}
-
-        #location_status { font-size: 0.85rem; padding-top: 8px; }
-
+        .btn-blue { background: var(--primary); } .btn-green { background: var(--success); } .btn-red { background: var(--danger); } 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
         .modal-content { background: var(--surface); padding: 20px; border-radius: 12px; width: 100%; max-width: 350px; }
-    
-        /* SERVER LOADING OVERLAY */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg, #f4f4f9); z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 0.5s ease-out;
-        }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #ccc;
-            border-top-color: #007bff; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg, #f4f4f9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease-out; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #ccc; border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
         #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
     </style>
 </head>
-<div id="loading-overlay">
-    <div class="spinner"></div>
-    <div id="loading-text">Connecting to Server...</div>
-    <div id="loading-subtext"></div>
-</div>
 <body>
+
+<div id="loading-overlay"><div class="spinner"></div><div id="loading-text">Connecting to Server...</div><div id="loading-subtext"></div></div>
 
 <header>CRS Warehouse Dashboard</header>
 
 <div class="container">
-    
     <div id="driver-view" class="view-section">
         <div class="form-grid">
             <div class="card">
                 <h2>Log Trip</h2>
                 <form id="tripForm">
                     <label>Driver</label>
-                    <select id="trip_driver" onchange="checkNewDriver(this)" required></select>
+                    <select id="trip_driver" onchange="checkDropdowns()" required></select>
                     
                     <label>Truck</label>
                     <select id="trip_truck" required></select>
                     
                     <label>Parked Location</label>
-                    <div style="display: flex; gap: 10px;">
-                        <select id="trip_location" required style="flex: 1;"></select>
-                        <button type="button" class="btn btn-blue btn-inline" onclick="useDeviceLocation()" style="margin-top: 8px;">📍 Locate</button>
-                    </div>
-                    <div id="location_status"></div>
+                    <select id="trip_location" onchange="checkDropdowns()" required></select>
 
                     <label>Current Trip End KM</label>
                     <input type="number" id="trip_km" required step="0.1" inputmode="decimal"> 
@@ -182,17 +81,10 @@
                 <h2>Fuel Up</h2>
                 <form id="fuelForm">
                     <label>Driver</label>
-                    <select id="fuel_driver" onchange="checkNewDriver(this)" required></select>
-                    
-                    <label>Truck</label>
-                    <select id="fuel_truck" required></select>
-                    
-                    <label>KM at Fuel Up</label>
-                    <input type="number" id="fuel_km" required step="0.1" inputmode="decimal">
-                    
-                    <label>Receipt Photo URL</label>
-                    <input type="text" id="fuel_receipt" required>
-                    
+                    <select id="fuel_driver" onchange="checkDropdowns()" required></select>
+                    <label>Truck</label><select id="fuel_truck" required></select>
+                    <label>KM at Fuel Up</label><input type="number" id="fuel_km" required step="0.1" inputmode="decimal">
+                    <label>Receipt Photo URL</label><input type="text" id="fuel_receipt" required>
                     <button type="submit" class="btn btn-green">Log Fuel Up</button>
                 </form>
             </div>
@@ -202,7 +94,6 @@
     <div id="schedule-view" class="view-section">
         <div class="card">
             <h2>Race Schedule</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Access the master logistics schedule below.</p>
             <input type="url" id="master_schedule_link" placeholder="Paste link here...">
             <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
         </div>
@@ -211,7 +102,6 @@
     <div id="resources-view" class="view-section">
         <div class="card">
             <h2>Truck Resources</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Select your truck to open its inventory sheet.</p>
             <div id="resource-buttons" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
@@ -234,58 +124,22 @@
     </div>
 </div>
 
+<!-- NEW LOCATION MODAL -->
+<div id="locationModal" class="modal">
+    <div class="modal-content">
+        <h3>Add Missing Location</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">Provide a description so the Admin team can set the coordinates later.</p>
+        <label>Location Name (e.g. Toronto Track):</label><input type="text" id="new_loc_name">
+        <label>Sub Location (e.g. Loading Bay 2):</label><input type="text" id="new_loc_type">
+        <label>Where is this?</label><textarea id="new_loc_desc" rows="3" placeholder="Describe where you parked..."></textarea>
+        <button class="btn btn-blue" onclick="saveLocation()">Add to List</button>
+        <button class="btn btn-red" onclick="document.getElementById('locationModal').style.display='none'">Cancel</button>
+    </div>
+</div>
+
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     
-    let globalLocations = [];
-    let exactParkedLat = null;
-    let exactParkedLng = null;
-
-    function getDistanceInKm(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * (Math.PI / 180);
-        const dLon = (lon2 - lon1) * (Math.PI / 180);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; 
-    }
-
-    function useDeviceLocation() {
-        const statusLabel = document.getElementById('location_status');
-        statusLabel.textContent = "Searching for GPS signal...";
-
-        if (!navigator.geolocation) {
-            statusLabel.textContent = "Geolocation is not supported by your browser.";
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition((position) => {
-            exactParkedLat = position.coords.latitude;
-            exactParkedLng = position.coords.longitude;
-            
-            let nearestLoc = null;
-            let shortestDistance = Infinity;
-
-            globalLocations.forEach(loc => {
-                let distance = getDistanceInKm(exactParkedLat, exactParkedLng, loc.lat, loc.lng);
-                if (distance < shortestDistance) {
-                    shortestDistance = distance;
-                    nearestLoc = loc;
-                }
-            });
-
-            if (nearestLoc) {
-                document.getElementById('trip_location').value = nearestLoc.id;
-                statusLabel.innerHTML = `<span style="color: #34c759;">✔ Exact location locked.</span> Nearest zone is ${nearestLoc.name} (${shortestDistance.toFixed(2)} km).`;
-            }
-        }, (error) => {
-            statusLabel.innerHTML = `<span style="color: #ff3b30;">❌ Unable to get location. Check permissions.</span>`;
-            console.error(error);
-        }, { enableHighAccuracy: true });
-    }
-
     function switchTab(tabId, btn) {
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
         document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
@@ -295,46 +149,22 @@
     }
 
     function loadData() {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
-        const loadingSubtext = document.getElementById('loading-subtext');
+        document.getElementById('loading-overlay').style.display = 'none';
 
-        const slowLoadTimer = setTimeout(() => {
-            if(loadingText) loadingText.innerText = "Waking up the database...";
-            if(loadingSubtext) loadingSubtext.innerText = "The server went to sleep. This takes about 50 seconds.";
-        }, 3000);
-
-        // Fetch all 3 lists at the same time and wait for them to finish
         Promise.all([
             fetch(`${API_URL}/drivers/`).then(res => res.json()),
             fetch(`${API_URL}/locations/`).then(res => res.json()),
             fetch(`${API_URL}/trucks/`).then(res => res.json())
         ])
         .then(([driversData, locationsData, trucksData]) => {
-            
-            // Hide the loading screen
-            clearTimeout(slowLoadTimer);
-            if(loadingOverlay) {
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 500);
-            }
-
-            // 1. Populate Drivers
             const drvSels = ['trip_driver', 'fuel_driver'];
             drvSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>');
-            driversData.forEach(d => {
-                drvSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`);
-            });
+            driversData.forEach(d => { drvSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`); });
 
-            // 2. Populate Locations
-            globalLocations = locationsData;
             const locSels = ['trip_location'];
-            locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`);
-            locationsData.forEach(loc => {
-                locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name}</option>`);
-            });
+            locSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>');
+            locationsData.forEach(loc => { locSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`); });
 
-            // 3. Populate Trucks
             const resButtons = document.getElementById('resource-buttons');
             const trkSels = ['trip_truck', 'fuel_truck'];
             trkSels.forEach(id => document.getElementById(id).innerHTML = '<option value="">Select truck...</option>');
@@ -342,37 +172,46 @@
             
             trucksData.forEach(t => {
                 trkSels.forEach(id => document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
-                if(t.resource_excel_url) {
-                    resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`;
-                }
+                if(t.resource_excel_url) resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`;
             });
-
-        })
-        .catch(err => {
-            console.error("Connection error", err);
-            if(loadingText) loadingText.innerText = "Connection Failed";
-            if(loadingSubtext) loadingSubtext.innerText = "Could not reach the server. Please check your signal and refresh.";
         });
     }
 
     loadData();
 
-    function checkNewDriver(selectElement) {
-        if(selectElement.value === "NEW") {
+    function checkDropdowns() {
+        if(document.getElementById('trip_driver').value === "NEW" || document.getElementById('fuel_driver').value === "NEW") {
             document.getElementById('driverModal').style.display = 'flex';
-            selectElement.value = ""; 
+            document.getElementById('trip_driver').value = ""; document.getElementById('fuel_driver').value = ""; 
+        }
+        if(document.getElementById('trip_location').value === "NEW") {
+            document.getElementById('locationModal').style.display = 'flex';
+            document.getElementById('trip_location').value = "";
         }
     }
 
     function saveDriver() {
         fetch(`${API_URL}/drivers/`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ first_name: document.getElementById('new_dr_first').value, last_initial: document.getElementById('new_dr_last').value, phone: document.getElementById('new_dr_phone').value })
+        }).then(() => { document.getElementById('driverModal').style.display='none'; loadData(); });
+    }
+
+    function saveLocation() {
+        // Find driver name to log who created it, fallback to "Driver" if none selected
+        const drSelect = document.getElementById('trip_driver');
+        let userName = "Driver";
+        if (drSelect.selectedIndex > 0) userName = drSelect.options[drSelect.selectedIndex].text;
+
+        fetch(`${API_URL}/locations/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                first_name: document.getElementById('new_dr_first').value,
-                last_initial: document.getElementById('new_dr_last').value,
-                phone: document.getElementById('new_dr_phone').value
+                name: document.getElementById('new_loc_name').value,
+                type: document.getElementById('new_loc_type').value,
+                description: document.getElementById('new_loc_desc').value,
+                user: userName
             })
-        }).then(() => location.reload());
+        }).then(() => { document.getElementById('locationModal').style.display='none'; loadData(); });
     }
 
     document.getElementById('tripForm').addEventListener('submit', e => {
@@ -385,14 +224,9 @@
                 destination_location_id: parseInt(document.getElementById('trip_location').value),
                 current_trip_end_km: parseFloat(document.getElementById('trip_km').value),
                 end_fuel: parseFloat(document.getElementById('trip_fuel').value),
-                damage_notes: document.getElementById('trip_notes').value,
-                exact_lat: exactParkedLat,
-                exact_lng: exactParkedLng
+                damage_notes: document.getElementById('trip_notes').value
             })
-        }).then(() => {
-            alert("Trip logged successfully!");
-            location.reload();
-        });
+        }).then(() => { alert("Trip logged successfully!"); document.getElementById('tripForm').reset(); loadData(); });
     });
 
     document.getElementById('fuelForm').addEventListener('submit', e => {
@@ -405,25 +239,12 @@
                 km_at_fuel_up: parseFloat(document.getElementById('fuel_km').value),
                 receipt_url: document.getElementById('fuel_receipt').value
             })
-        }).then(() => {
-            alert("Fuel up logged successfully!");
-            location.reload();
-        });
+        }).then(() => { alert("Fuel up logged successfully!"); document.getElementById('fuelForm').reset(); loadData(); });
     });
 
-    // Register PWA Service Worker
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('ServiceWorker registered successfully');
-                })
-                .catch(err => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-        });
+        window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); });
     }
 </script>
-
 </body>
 </html>
