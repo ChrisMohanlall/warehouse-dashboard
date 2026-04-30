@@ -127,6 +127,8 @@
     <div class="modal-content">
         <h3>Add Missing Location</h3>
         <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">Provide a description so the Admin team can set the coordinates later.</p>
+        <label>Your Name (Driver):</label>
+        <select id="new_loc_driver" onchange="checkDropdowns()" required></select>
         <label>Location Name (e.g. Toronto Track):</label><input type="text" id="new_loc_name">
         <label>Sub Location (e.g. Loading Bay 2):</label><input type="text" id="new_loc_type">
         <label>Where is this?</label><textarea id="new_loc_desc" rows="3" placeholder="Describe where you parked..."></textarea>
@@ -172,7 +174,7 @@
         $('mobile-banner').innerText = raceSettings.value;
 
         // Populate Drivers
-        ['trip_driver', 'fuel_driver'].forEach(id => { 
+        ['trip_driver', 'fuel_driver', 'new_loc_driver'].forEach(id => { 
             $(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>'; 
             drivers.forEach(d => { $(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; }); 
         });
@@ -194,9 +196,15 @@
     loadData();
 
     function checkDropdowns() {
-        if($('trip_driver').value === "NEW" || $('fuel_driver').value === "NEW") {
+        // If a driver selects "Add New" in ANY of the three driver dropdowns
+        if($('trip_driver').value === "NEW" || $('fuel_driver').value === "NEW" || $('new_loc_driver').value === "NEW") {
+            $('locationModal').style.display = 'none'; // Close location modal safely if it was open
             $('driverModal').style.display = 'flex';
-            $('trip_driver').value = ""; $('fuel_driver').value = ""; 
+            
+            // Reset the dropdowns
+            $('trip_driver').value = ""; 
+            $('fuel_driver').value = ""; 
+            $('new_loc_driver').value = "";
         }
         if($('trip_location').value === "NEW") {
             $('locationModal').style.display = 'flex';
@@ -217,8 +225,15 @@
     }
 
     async function saveLocation() {
-        const drSelect = $('trip_driver');
-        const userName = drSelect.selectedIndex > 0 ? drSelect.options[drSelect.selectedIndex].text : "Driver";
+        const drSelect = $('new_loc_driver');
+        
+        // Ensure they actually picked their name!
+        if (drSelect.selectedIndex <= 0 || !drSelect.value) {
+            alert("Please select your name from the Driver dropdown first.");
+            return;
+        }
+        
+        const userName = drSelect.options[drSelect.selectedIndex].text;
 
         await apiCall('/locations/', 'POST', { 
             name: $('new_loc_name').value, 
@@ -226,7 +241,12 @@
             description: $('new_loc_desc').value, 
             user: userName 
         });
-        $('new_loc_name').value = ''; $('new_loc_type').value = ''; $('new_loc_desc').value = '';
+        
+        $('new_loc_name').value = ''; 
+        $('new_loc_type').value = ''; 
+        $('new_loc_desc').value = ''; 
+        $('new_loc_driver').value = '';
+        
         $('locationModal').style.display='none'; 
         loadData(); 
     }
