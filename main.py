@@ -27,8 +27,8 @@ class DBLocation(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     type = Column(String)
-    description = Column(Text, nullable=True) # New: Notes from drivers
-    lat = Column(Float, nullable=True) # New: Nullable for undefined locations
+    description = Column(Text, nullable=True) 
+    lat = Column(Float, nullable=True) 
     lng = Column(Float, nullable=True)
 
 class DBDriver(Base):
@@ -46,7 +46,7 @@ class DBTruck(Base):
     purpose = Column(String)
     status = Column(String, default="Parked") 
     current_driver_id = Column(Integer, ForeignKey("drivers.id"), nullable=True)
-    current_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True) # Explicitly link truck to location
+    current_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True) 
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     initial_photo_url = Column(String, nullable=True)
@@ -78,7 +78,7 @@ class DBActivityLog(Base):
     __tablename__ = "activity_logs"
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
-    user = Column(String, default="Admin") # New: Track who made the change
+    user = Column(String, default="Admin") 
     action = Column(String)
     details = Column(Text)
 
@@ -106,7 +106,11 @@ def get_db():
     try: yield db
     finally: db.close()
 
-class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
+class DriverCreate(BaseModel): 
+    first_name: str
+    last_initial: str
+    phone: str
+
 class LocationCreate(BaseModel): 
     name: str
     type: str
@@ -115,25 +119,49 @@ class LocationCreate(BaseModel):
     lng: Optional[float] = None
     user: str = "Admin"
 
-class LocationFix(BaseModel): lat: float; lng: float
+class LocationFix(BaseModel): 
+    lat: float
+    lng: float
 
-class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
-class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
-class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
+class TruckCreate(BaseModel): 
+    truck_name: str
+    license_plate: str
+    purpose: str
+    location_id: int
+    start_fuel: float
+    status: str = "Parked"
+    initial_photo_url: str = ""
+    general_notes: str = ""
+    resource_excel_url: str = ""
+
+class TruckUpdate(BaseModel): 
+    license_plate: str
+    purpose: str
+    start_fuel: float
+    status: str
+    general_notes: str = ""
+    resource_excel_url: str = ""
+
+class FuelLogCreate(BaseModel): 
+    truck_id: int
+    driver_id: int
+    km_at_fuel_up: float
+    receipt_url: str
 
 class TripLogCreate(BaseModel): 
-    truck_id: int; 
-    driver_id: int; 
-    destination_location_id: int; 
-    current_trip_end_km: float; 
-    end_fuel: float; 
-    damage_notes: str; 
+    truck_id: int 
+    driver_id: int 
+    destination_location_id: int 
+    current_trip_end_km: float 
+    end_fuel: float 
+    damage_notes: str 
     damage_pic_url: str = ""
 
 # --- API ENDPOINTS ---
 
 @app.get("/")
-def root(): return {"message": "CRS Warehouse Dashboard API is live!"}
+def root(): 
+    return {"message": "CRS Warehouse Dashboard API is live!"}
 
 @app.get("/keep-awake/")
 def keep_awake(db: Session = Depends(get_db)):
@@ -141,10 +169,12 @@ def keep_awake(db: Session = Depends(get_db)):
     return {"status": "Render API and Database are both awake!"}
 
 @app.get("/config/")
-def get_config(): return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
+def get_config(): 
+    return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
 
 @app.get("/drivers/")
-def get_drivers(db: Session = Depends(get_db)): return db.query(DBDriver).all()
+def get_drivers(db: Session = Depends(get_db)): 
+    return db.query(DBDriver).all()
 
 @app.post("/drivers/")
 def create_driver(driver: DriverCreate, db: Session = Depends(get_db)):
@@ -157,11 +187,13 @@ def create_driver(driver: DriverCreate, db: Session = Depends(get_db)):
 def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     driver = db.query(DBDriver).filter(DBDriver.id == driver_id).first()
     log_activity(db, "Admin", "Remove Driver", f"Removed driver: {driver.first_name} {driver.last_initial}.")
-    db.delete(driver); db.commit()
+    db.delete(driver)
+    db.commit()
     return {"message": "Driver removed."}
 
 @app.get("/locations/")
-def get_locations(db: Session = Depends(get_db)): return db.query(DBLocation).all()
+def get_locations(db: Session = Depends(get_db)): 
+    return db.query(DBLocation).all()
 
 @app.post("/locations/")
 def create_location(loc: LocationCreate, db: Session = Depends(get_db)):
@@ -181,7 +213,8 @@ def update_location_coords(loc_id: int, coords: LocationFix, db: Session = Depen
     # Sync any trucks parked here to the new coords
     trucks = db.query(DBTruck).filter(DBTruck.current_location_id == loc.id).all()
     for t in trucks:
-        t.lat = coords.lat; t.lng = coords.lng
+        t.lat = coords.lat
+        t.lng = coords.lng
         
     db.commit()
     return {"message": "Location coordinates fixed!"}
@@ -190,7 +223,8 @@ def update_location_coords(loc_id: int, coords: LocationFix, db: Session = Depen
 def delete_location(loc_id: int, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == loc_id).first()
     log_activity(db, "Admin", "Remove Location", f"Removed location: {loc.name} - {loc.type}.")
-    db.delete(loc); db.commit()
+    db.delete(loc)
+    db.commit()
     return {"message": "Location removed."}
 
 @app.get("/trucks/")
@@ -208,7 +242,19 @@ def get_trucks(db: Session = Depends(get_db)):
 @app.post("/trucks/")
 def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == truck.location_id).first()
-    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url))
+    db.add(DBTruck(
+        truck_name=truck.truck_name, 
+        license_plate=truck.license_plate, 
+        purpose=truck.purpose, 
+        status=truck.status, 
+        lat=loc.lat, 
+        lng=loc.lng, 
+        current_location_id=loc.id, 
+        start_fuel=truck.start_fuel, 
+        initial_photo_url=truck.initial_photo_url, 
+        general_notes=truck.general_notes, 
+        resource_excel_url=truck.resource_excel_url
+    ))
     db.commit()
     log_activity(db, "Admin", "Intake Truck", f"Added new truck: {truck.truck_name} ({truck.license_plate}).")
     return {"message": "Truck added!"}
@@ -230,7 +276,8 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
 def delete_truck(truck_id: int, db: Session = Depends(get_db)):
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
     log_activity(db, "Admin", "Remove Truck", f"Removed truck: {truck.truck_name}.")
-    db.delete(truck); db.commit()
+    db.delete(truck)
+    db.commit()
     return {"message": "Truck removed."}
 
 @app.post("/trip-logs/")
