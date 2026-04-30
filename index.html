@@ -75,7 +75,11 @@
 </head>
 <body>
 
-<div id="loading-overlay"><div class="spinner"></div><div id="loading-text">Connecting to Server...</div><div id="loading-subtext"></div></div>
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="loading-text">Connecting to Server...</div>
+    <div id="loading-subtext"></div>
+</div>
 
 <nav>
     <button onclick="switchTab('dashboard-view', this)" class="active">Map Dashboard</button>
@@ -125,8 +129,10 @@
                 <h2>Manage Locations</h2>
                 <form id="locationForm">
                     <input type="hidden" id="edit_loc_id" value="">
-                    <label>Location Name:</label><input type="text" id="loc_name" required>
-                    <label>Sub Location (Type):</label><input type="text" id="loc_type" required>
+                    <label>Location Name:</label>
+                    <input type="text" id="loc_name" required>
+                    <label>Sub Location (Type):</label>
+                    <input type="text" id="loc_type" required>
                     
                     <div id="loc_desc_wrapper" style="display:none; background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-top: 10px;">
                         <b>Driver Notes:</b> <span id="loc_desc_text"></span>
@@ -161,23 +167,51 @@
             <div class="card">
                 <h2>Truck Management</h2>
                 <form id="truckForm">
-                    <label>Truck Name:</label><input type="text" id="trk_name" required>
-                    <label>License Plate:</label><input type="text" id="trk_plate" required>
-                    <label>Purpose:</label><input type="text" id="trk_purpose" required>
+                    <label>Truck Name:</label>
+                    <input type="text" id="trk_name" required>
+                    <label>License Plate:</label>
+                    <input type="text" id="trk_plate" required>
+                    <label>Purpose:</label>
+                    <input type="text" id="trk_purpose" required>
                     <label>Status:</label>
                     <select id="trk_status">
-                        <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
+                        <option value="Parked">Parked</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Docked">Docked</option>
                     </select>
-                    <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
-                    <label>Initial Location:</label><select id="trk_loc"></select>
-                    <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
-                    <label>General Notes:</label><textarea id="trk_notes"></textarea>
+                    <label>Start Fuel (%):</label>
+                    <input type="number" id="trk_fuel" required>
+                    <label>Initial Location:</label>
+                    <select id="trk_loc"></select>
+                    <label>Resource Excel Link:</label>
+                    <input type="text" id="trk_excel" placeholder="Google Sheet URL...">
+                    <label>General Notes:</label>
+                    <textarea id="trk_notes"></textarea>
                     
                     <div style="display:flex; gap:10px;">
                         <button type="button" class="btn btn-green" onclick="submitTruck('add')">Intake New</button>
                         <button type="button" class="btn btn-blue" onclick="submitTruck('update')">Update Existing</button>
                     </div>
                 </form>
+            </div>
+
+            <div class="card">
+                <h2>Remove Assets</h2>
+                <label>Remove Driver:</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="remove_driver"></select>
+                    <button class="btn btn-red btn-inline" onclick="removeEntity('drivers', 'remove_driver')">Remove</button>
+                </div>
+                <label>Remove Truck:</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="remove_truck"></select>
+                    <button class="btn btn-red btn-inline" onclick="removeEntity('trucks', 'remove_truck')">Remove</button>
+                </div>
+                <label>Remove Location:</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="remove_location"></select>
+                    <button class="btn btn-red btn-inline" onclick="removeEntity('locations', 'remove_location')">Remove</button>
+                </div>
             </div>
 
             <div class="card" style="grid-column: span 2;">
@@ -225,10 +259,14 @@
             document.getElementById('loading-overlay').style.display = 'none';
             mapboxgl.accessToken = config.mapbox_token;
 
-            map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12 });
+            map = new mapboxgl.Map({ 
+                container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12 
+            });
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-            adminMap = new mapboxgl.Map({ container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 });
+            adminMap = new mapboxgl.Map({ 
+                container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 
+            });
             adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
             adminMap.on('click', (e) => { setAdminMarker(e.lngLat.lat, e.lngLat.lng); });
 
@@ -239,8 +277,11 @@
         targetMap.setStyle('mapbox://styles/mapbox/' + styleName);
         document.getElementById(`${mapPrefix}-street-btn`).classList.remove('active');
         document.getElementById(`${mapPrefix}-sat-btn`).classList.remove('active');
-        if (styleName.includes('satellite')) document.getElementById(`${mapPrefix}-sat-btn`).classList.add('active');
-        else document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
+        if (styleName.includes('satellite')) {
+            document.getElementById(`${mapPrefix}-sat-btn`).classList.add('active');
+        } else {
+            document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
+        }
     }
 
     function switchTab(tabId, btn) {
@@ -262,6 +303,8 @@
                     const [lng, lat] = data.features[0].center;
                     adminMap.flyTo({ center: [lng, lat], zoom: 18 });
                     setAdminMarker(lat, lng);
+                } else {
+                    alert("Address not found.");
                 }
             });
     }
@@ -279,7 +322,8 @@
         const trkFilter = document.getElementById('filter-trucks').value;
         const locFilter = document.getElementById('filter-locations').value;
         
-        trkList.innerHTML = ''; locList.innerHTML = '';
+        trkList.innerHTML = ''; 
+        locList.innerHTML = '';
 
         globalLocations.filter(loc => locFilter === 'All' || loc.type === locFilter).forEach(loc => {
             const isUndefined = loc.lat === null;
@@ -324,39 +368,81 @@
     }
 
     function loadData() {
-        markers.forEach(m => m.remove()); markers = [];
+        markers.forEach(m => m.remove()); 
+        markers = [];
 
+        // 1. Fetch Drivers
+        fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
+            const drvSelect = document.getElementById('remove_driver');
+            if(drvSelect) {
+                drvSelect.innerHTML = '<option value="">Select...</option>';
+                data.forEach(d => { 
+                    drvSelect.innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; 
+                });
+            }
+        });
+
+        // 2. Fetch Locations
         fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
             globalLocations = data;
+            
             const trkLoc = document.getElementById('trk_loc');
+            const remLoc = document.getElementById('remove_location');
+            
             if(trkLoc) trkLoc.innerHTML = '';
+            if(remLoc) remLoc.innerHTML = '<option value="">Select...</option>';
             
             const locFilterDropdown = document.getElementById('filter-locations');
             const currentFilterVal = locFilterDropdown.value;
             locFilterDropdown.innerHTML = '<option value="All">All Types</option>';
-            [...new Set(data.map(l => l.type))].forEach(type => { locFilterDropdown.innerHTML += `<option value="${type}">${type}</option>`; });
+            
+            const uniqueTypes = [...new Set(data.map(l => l.type))];
+            uniqueTypes.forEach(type => { 
+                locFilterDropdown.innerHTML += `<option value="${type}">${type}</option>`; 
+            });
             locFilterDropdown.value = uniqueTypes.includes(currentFilterVal) ? currentFilterVal : "All";
             
             data.forEach(loc => {
                 if(trkLoc) trkLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
+                if(remLoc) remLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
+                
                 if(loc.lat !== null) {
-                    const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>${loc.type}`)).addTo(map);
-                    loc.markerRef = marker; markers.push(marker);
+                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>${loc.type}`);
+                    const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(popup).addTo(map);
+                    loc.markerRef = marker; 
+                    markers.push(marker);
                 }
             });
 
+            // 3. Fetch Trucks
             fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(truckData => {
                 globalTrucks = truckData;
+                
+                const remTrk = document.getElementById('remove_truck');
+                const resButtons = document.getElementById('resource-buttons');
+                
+                if(remTrk) remTrk.innerHTML = '<option value="">Select...</option>';
+                if(resButtons) resButtons.innerHTML = '';
+
                 truckData.forEach(t => {
+                    if(remTrk) remTrk.innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+                    
+                    if(t.resource_excel_url && resButtons) {
+                        resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                    }
+
                     if(t.lat !== null) {
-                        const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Status: ${t.status}<br>Driver: ${t.current_driver_name}`)).addTo(map);
-                        t.markerRef = marker; markers.push(marker);
+                        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Status: ${t.status}<br>Driver: ${t.current_driver_name}`);
+                        const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(popup).addTo(map);
+                        t.markerRef = marker; 
+                        markers.push(marker);
                     }
                 });
                 renderSidebarLists(); 
             });
         });
 
+        // 4. Fetch Activity Logs
         fetch(`${API_URL}/activity-logs/`).then(res=>res.json()).then(data => {
             const tbody = document.getElementById('activity-table');
             if(tbody) {
@@ -386,7 +472,11 @@
                 lng: parseFloat(document.getElementById('loc_lng').value),
                 user: "Admin"
             })
-        }).then(() => { alert("Location saved!"); resetLocForm(); loadData(); });
+        }).then(() => { 
+            alert("Location saved!"); 
+            resetLocForm(); 
+            loadData(); 
+        });
     }
 
     function fixLocationCoords() {
@@ -397,7 +487,12 @@
                 lat: parseFloat(document.getElementById('loc_lat').value),
                 lng: parseFloat(document.getElementById('loc_lng').value)
             })
-        }).then(() => { alert("Coordinates Updated!"); resetLocForm(); loadData(); switchTab('dashboard-view', document.querySelectorAll('nav button')[0]); });
+        }).then(() => { 
+            alert("Coordinates Updated!"); 
+            resetLocForm(); 
+            loadData(); 
+            switchTab('dashboard-view', document.querySelectorAll('nav button')[0]); 
+        });
     }
 
     function resetLocForm() {
@@ -437,13 +532,28 @@
         };
 
         if (action === 'add') {
-            fetch(`${API_URL}/trucks/`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
-            .then(() => { alert("New truck created!"); document.getElementById('truckForm').reset(); loadData(); });
+            fetch(`${API_URL}/trucks/`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            }).then(() => { 
+                alert("New truck created!"); 
+                document.getElementById('truckForm').reset(); 
+                loadData(); 
+            });
         } else {
             const existing = globalTrucks.find(t => t.truck_name === payload.truck_name);
             if(!existing) return alert("Truck name not found for update!");
-            fetch(`${API_URL}/trucks/${existing.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
-            .then(() => { alert("Truck updated successfully!"); document.getElementById('truckForm').reset(); loadData(); });
+            
+            fetch(`${API_URL}/trucks/${existing.id}`, { 
+                method: 'PUT', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            }).then(() => { 
+                alert("Truck updated successfully!"); 
+                document.getElementById('truckForm').reset(); 
+                loadData(); 
+            });
         }
     }
 </script>
