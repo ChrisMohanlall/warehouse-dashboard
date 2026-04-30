@@ -113,7 +113,7 @@ def get_db():
 class SettingUpdate(BaseModel): value: str
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; user: str = "Admin"
-class LocationFix(BaseModel): lat: float; lng: float
+class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None
 class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
 class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
@@ -181,15 +181,23 @@ def create_location(loc: LocationCreate, db: Session = Depends(get_db)):
     return {"message": "Location added!"}
 
 @app.put("/locations/{loc_id}")
-def update_location_coords(loc_id: int, coords: LocationFix, db: Session = Depends(get_db)):
+def update_location(loc_id: int, update_data: LocationUpdate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == loc_id).first()
-    loc.lat = coords.lat; loc.lng = coords.lng
-    log_activity(db, "Admin", "Fix Location", f"Set map coordinates for {loc.name} - {loc.type}.")
+    loc.name = update_data.name
+    loc.type = update_data.type
+    loc.lat = update_data.lat
+    loc.lng = update_data.lng
+    log_activity(db, "Admin", "Edit Location", f"Updated location: {loc.name} - {loc.type}.")
     
-    trucks = db.query(DBTruck).filter(DBTruck.current_location_id == loc.id).all()
-    for t in trucks: t.lat = coords.lat; t.lng = coords.lng
+    # Sync trucks parked at this location to the new coordinates (if any)
+    if update_data.lat is not None and update_data.lng is not None:
+        trucks = db.query(DBTruck).filter(DBTruck.current_location_id == loc.id).all()
+        for t in trucks: 
+            t.lat = update_data.lat
+            t.lng = update_data.lng
+            
     db.commit()
-    return {"message": "Location coordinates fixed!"}
+    return {"message": "Location updated!"}
 
 @app.delete("/locations/{loc_id}")
 def delete_location(loc_id: int, db: Session = Depends(get_db)):
