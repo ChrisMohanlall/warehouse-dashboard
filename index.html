@@ -44,6 +44,7 @@
         .btn-blue { background: #007bff; } .btn-blue:hover { background: #0056b3; }
         .btn-green { background: #28a745; } .btn-green:hover { background: #218838; }
         .btn-red { background: #dc3545; } .btn-red:hover { background: #c82333; }
+        .btn-orange { background: #fd7e14; } .btn-orange:hover { background: #e86e04; }
         .btn-inline { width: auto; padding: 8px 15px; margin-top: 5px; font-size: 14px;}
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -51,11 +52,11 @@
         th { background-color: #f2f2f2; }
         .mapboxgl-popup-content { padding: 10px 15px; font-family: Arial; }
 
-        /* UI ENHANCEMENTS: Badges and Filters */
         .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; margin-left: 5px; display: inline-block;}
         .status-parked { background: #e2e3e5; color: #383d41; }
         .status-transit { background: #fff3cd; color: #856404; }
         .status-docked { background: #d4edda; color: #155724; }
+        .status-undefined { background: #dc3545; color: white; }
         
         .filter-select { margin-bottom: 10px; font-weight: bold; color: #444; border: 1px solid #aaa; background: #f9f9f9;}
         .location-text { font-size: 0.85rem; color: #666; display: block; margin-top: 4px;}
@@ -74,11 +75,7 @@
 </head>
 <body>
 
-<div id="loading-overlay">
-    <div class="spinner"></div>
-    <div id="loading-text">Connecting to Server...</div>
-    <div id="loading-subtext"></div>
-</div>
+<div id="loading-overlay"><div class="spinner"></div><div id="loading-text">Connecting to Server...</div><div id="loading-subtext"></div></div>
 
 <nav>
     <button onclick="switchTab('dashboard-view', this)" class="active">Map Dashboard</button>
@@ -124,11 +121,16 @@
 
     <div id="admin-view" class="view-section">
         <div class="form-grid">
-            <div class="card">
-                <h2>Add Location</h2>
+            <div class="card" id="location-card">
+                <h2>Manage Locations</h2>
                 <form id="locationForm">
+                    <input type="hidden" id="edit_loc_id" value="">
                     <label>Location Name:</label><input type="text" id="loc_name" required>
-                    <label>Type:</label><input type="text" id="loc_type" required>
+                    <label>Sub Location (Type):</label><input type="text" id="loc_type" required>
+                    
+                    <div id="loc_desc_wrapper" style="display:none; background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-top: 10px;">
+                        <b>Driver Notes:</b> <span id="loc_desc_text"></span>
+                    </div>
                     
                     <label>Search by Address:</label>
                     <div style="display: flex; gap: 10px;">
@@ -143,31 +145,29 @@
                         </div>
                         <div id="admin-map"></div>
                     </div>
-                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Or click the map directly to drop a pin.</div>
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Click the map directly to drop a pin.</div>
 
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
                         <div style="flex: 1;"><label>Latitude:</label><input type="number" id="loc_lat" step="any" required></div>
                         <div style="flex: 1;"><label>Longitude:</label><input type="number" id="loc_lng" step="any" required></div>
                     </div>
                     
-                    <button type="submit" class="btn btn-green">Save Location</button>
+                    <button type="button" class="btn btn-green" id="btn-save-loc" onclick="submitLocation()">Save New Location</button>
+                    <button type="button" class="btn btn-orange" id="btn-update-loc" onclick="fixLocationCoords()" style="display:none;">Update Missing Coordinates</button>
+                    <button type="button" class="btn btn-red" id="btn-cancel-loc" onclick="resetLocForm()" style="display:none;">Cancel Edit</button>
                 </form>
             </div>
 
             <div class="card">
                 <h2>Truck Management</h2>
                 <form id="truckForm">
-                    <label>Truck Name (e.g. TRK-A):</label><input type="text" id="trk_name" required>
+                    <label>Truck Name:</label><input type="text" id="trk_name" required>
                     <label>License Plate:</label><input type="text" id="trk_plate" required>
                     <label>Purpose:</label><input type="text" id="trk_purpose" required>
-                    
                     <label>Status:</label>
                     <select id="trk_status">
-                        <option value="Parked">Parked</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Docked">Docked</option>
+                        <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
                     </select>
-
                     <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
                     <label>Initial Location:</label><select id="trk_loc"></select>
                     <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
@@ -180,94 +180,41 @@
                 </form>
             </div>
 
-            <div class="card">
-                <h2>Remove Assets</h2>
-                <label>Remove Driver:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_driver"></select><button class="btn btn-red btn-inline" onclick="removeEntity('drivers', 'remove_driver')">Remove</button></div>
-                <label>Remove Truck:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_truck"></select><button class="btn btn-red btn-inline" onclick="removeEntity('trucks', 'remove_truck')">Remove</button></div>
-                <label>Remove Location:</label>
-                <div style="display:flex; gap:10px;"><select id="remove_location"></select><button class="btn btn-red btn-inline" onclick="removeEntity('locations', 'remove_location')">Remove</button></div>
+            <div class="card" style="grid-column: span 2;">
+                <h2>Activity Log</h2>
+                <table>
+                    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+                    <tbody id="activity-table"></tbody>
+                </table>
             </div>
-        </div>
-
-        <div class="card" style="max-width: 100%;">
-            <h2>Activity Log</h2>
-            <table>
-                <thead><tr><th>Time</th><th>Action</th><th>Details</th></tr></thead>
-                <tbody id="activity-table"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="schedule-view" class="view-section">
-        <div class="card" style="max-width: 100%;">
-            <h2>Race Schedule</h2>
-            <input type="text" id="master_schedule_link" placeholder="Paste link to Master Schedule...">
-            <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
-        </div>
-    </div>
-
-    <div id="resources-view" class="view-section">
-        <div class="card" style="max-width: 100%;">
-            <h2>Truck Resource Sheets</h2>
-            <div id="resource-buttons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
     </div>
 </div>
 
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     
     let globalTrucks = [];
     let globalLocations = [];
-    let markers = []; // Array to keep track of map markers so we can clear them when reloading
+    let markers = []; 
     const defaultLngLat = [-79.347015, 43.651070]; 
     let map, adminMap, adminMarker;
 
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const loadingText = document.getElementById('loading-text');
-    const loadingSubtext = document.getElementById('loading-subtext');
-
-    const slowLoadTimer = setTimeout(() => {
-        if(loadingText) loadingText.innerText = "Waking up the database...";
-        if(loadingSubtext) loadingSubtext.innerText = "The server went to sleep. This takes about 50 seconds.";
-    }, 3000);
-
     fetch(`${API_URL}/config/`)
-        .then(res => {
-            if (!res.ok) throw new Error("Server refused connection.");
-            return res.json();
-        })
+        .then(res => res.json())
         .then(config => {
-            clearTimeout(slowLoadTimer);
-            if(loadingOverlay) {
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 500); 
-            }
-            
+            document.getElementById('loading-overlay').style.display = 'none';
             mapboxgl.accessToken = config.mapbox_token;
 
-            map = new mapboxgl.Map({
-                container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12
-            });
+            map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12 });
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-            adminMap = new mapboxgl.Map({
-                container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10
-            });
+            adminMap = new mapboxgl.Map({ container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 });
             adminMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-
             adminMap.on('click', (e) => { setAdminMarker(e.lngLat.lat, e.lngLat.lng); });
 
             map.on('load', () => loadData());
-        })
-        .catch(err => {
-            console.error("Could not load config", err);
-            if(loadingText) loadingText.innerText = "Error connecting to server.";
-            if(loadingSubtext) loadingSubtext.innerText = "Please refresh the page.";
         });
 
     function setStyle(targetMap, styleName, mapPrefix) {
@@ -276,27 +223,6 @@
         document.getElementById(`${mapPrefix}-sat-btn`).classList.remove('active');
         if (styleName.includes('satellite')) document.getElementById(`${mapPrefix}-sat-btn`).classList.add('active');
         else document.getElementById(`${mapPrefix}-street-btn`).classList.add('active');
-    }
-
-    function geocodeAddress() {
-        const address = document.getElementById('loc_address_search').value;
-        if (!address) return alert("Please enter an address.");
-        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.features && data.features.length > 0) {
-                    const [lng, lat] = data.features[0].center;
-                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
-                    setAdminMarker(lat, lng);
-                } else alert("Address not found.");
-            });
-    }
-
-    function setAdminMarker(lat, lng) {
-        document.getElementById('loc_lat').value = lat.toFixed(6);
-        document.getElementById('loc_lng').value = lng.toFixed(6);
-        if (adminMarker) adminMarker.remove(); 
-        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
     }
 
     function switchTab(tabId, btn) {
@@ -308,118 +234,108 @@
         if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
     }
 
-    // Mathematical helper to figure out exactly what warehouse/race track a truck is parked at
-    function getNearestLocationName(lat, lng) {
-        if (!globalLocations || globalLocations.length === 0) return "Unknown";
-        let nearest = "Unknown";
-        let shortest = Infinity;
-        globalLocations.forEach(loc => {
-            const R = 6371;
-            const dLat = (loc.lat - lat) * (Math.PI / 180);
-            const dLon = (loc.lng - lng) * (Math.PI / 180);
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat * (Math.PI / 180)) * Math.cos(loc.lat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const distance = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            if (distance < shortest) { shortest = distance; nearest = loc.name; }
-        });
-        // If it's less than 500 meters away, consider it exactly at the location. Otherwise append the distance.
-        return shortest < 0.5 ? nearest : `${nearest} (${shortest.toFixed(1)}km away)`; 
+    function geocodeAddress() {
+        const address = document.getElementById('loc_address_search').value;
+        if (!address) return;
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const [lng, lat] = data.features[0].center;
+                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
+                    setAdminMarker(lat, lng);
+                }
+            });
     }
 
-    // Handles writing out the HTML for the sidebars based on what the filters are set to
+    function setAdminMarker(lat, lng) {
+        document.getElementById('loc_lat').value = lat.toFixed(6);
+        document.getElementById('loc_lng').value = lng.toFixed(6);
+        if (adminMarker) adminMarker.remove(); 
+        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
+    }
+
     function renderSidebarLists() {
         const trkList = document.getElementById('list-trucks');
         const locList = document.getElementById('list-locations');
         const trkFilter = document.getElementById('filter-trucks').value;
         const locFilter = document.getElementById('filter-locations').value;
         
-        trkList.innerHTML = '';
-        locList.innerHTML = '';
+        trkList.innerHTML = ''; locList.innerHTML = '';
 
-        // Filter and Draw Locations
         globalLocations.filter(loc => locFilter === 'All' || loc.type === locFilter).forEach(loc => {
-            const originalIndex = globalLocations.indexOf(loc); // Need original index for map zooming
-            locList.innerHTML += `<li class="list-item" onclick="zoomToMax(${loc.lat}, ${loc.lng}, ${originalIndex}, 'loc')"><b>${loc.name}</b> <br><small>${loc.type}</small></li>`;
+            const isUndefined = loc.lat === null;
+            let badge = isUndefined ? '<span class="status-badge status-undefined">Missing Coords</span>' : '';
+            locList.innerHTML += `<li class="list-item" onclick="handleLocationClick(${globalLocations.indexOf(loc)})"><b>${loc.name}</b> - <small>${loc.type}</small> ${badge}</li>`;
         });
 
-        // Filter and Draw Trucks
         globalTrucks.filter(t => trkFilter === 'All' || t.status === trkFilter).forEach(t => {
-            const originalIndex = globalTrucks.indexOf(t);
             let badgeClass = 'status-parked';
             if(t.status === 'In Transit') badgeClass = 'status-transit';
             if(t.status === 'Docked') badgeClass = 'status-docked';
 
-            const locName = getNearestLocationName(t.lat, t.lng);
-
-            trkList.innerHTML += `
-                <li class="list-item" onclick="zoomToMax(${t.lat}, ${t.lng}, ${originalIndex}, 'trk')">
-                    <b>${t.truck_name}</b> <span class="status-badge ${badgeClass}">${t.status || 'Parked'}</span><br>
-                    <span class="location-text">📍 ${locName}</span>
-                </li>`;
+            let locString = t.is_location_undefined ? `📍 ${t.current_location_name} (Missing Coords)` : `📍 ${t.current_location_name}`;
+            trkList.innerHTML += `<li class="list-item" onclick="zoomToMax(${t.lat}, ${t.lng}, ${globalTrucks.indexOf(t)}, 'trk')"><b>${t.truck_name}</b> <span class="status-badge ${badgeClass}">${t.status || 'Parked'}</span><br><span class="location-text">${locString}</span></li>`;
         });
     }
 
-    function loadData() {
-        // Clear old map markers to prevent duplicates when data reloads
-        markers.forEach(m => m.remove());
-        markers = [];
-
-        fetch(`${API_URL}/drivers/`).then(res=>res.json()).then(data => {
-            const drvSelect = document.getElementById('remove_driver');
-            if(drvSelect) {
-                drvSelect.innerHTML = '<option value="">Select...</option>';
-                data.forEach(d => { drvSelect.innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; });
+    function handleLocationClick(index) {
+        const loc = globalLocations[index];
+        if (loc.lat === null) {
+            switchTab('admin-view', document.querySelectorAll('nav button')[1]);
+            document.getElementById('edit_loc_id').value = loc.id;
+            document.getElementById('loc_name').value = loc.name;
+            document.getElementById('loc_type').value = loc.type;
+            
+            document.getElementById('loc_name').disabled = true;
+            document.getElementById('loc_type').disabled = true;
+            
+            if(loc.description) {
+                document.getElementById('loc_desc_wrapper').style.display = 'block';
+                document.getElementById('loc_desc_text').innerText = loc.description;
             }
-        });
+
+            document.getElementById('btn-save-loc').style.display = 'none';
+            document.getElementById('btn-update-loc').style.display = 'block';
+            document.getElementById('btn-cancel-loc').style.display = 'block';
+            
+            alert(`Please use the map to drop a pin for ${loc.name} - ${loc.type}.`);
+        } else {
+            zoomToMax(loc.lat, loc.lng, index, 'loc');
+        }
+    }
+
+    function loadData() {
+        markers.forEach(m => m.remove()); markers = [];
 
         fetch(`${API_URL}/locations/`).then(res=>res.json()).then(data => {
             globalLocations = data;
-            
-            // Build Admin Dropdowns
             const trkLoc = document.getElementById('trk_loc');
-            const remLoc = document.getElementById('remove_location');
             if(trkLoc) trkLoc.innerHTML = '';
-            if(remLoc) remLoc.innerHTML = '<option value="">Select...</option>';
             
-            // Build Filter Dropdown Options dynamically based on data
             const locFilterDropdown = document.getElementById('filter-locations');
             const currentFilterVal = locFilterDropdown.value;
             locFilterDropdown.innerHTML = '<option value="All">All Types</option>';
-            const uniqueTypes = [...new Set(data.map(l => l.type))];
-            uniqueTypes.forEach(type => { locFilterDropdown.innerHTML += `<option value="${type}">${type}</option>`; });
+            [...new Set(data.map(l => l.type))].forEach(type => { locFilterDropdown.innerHTML += `<option value="${type}">${type}</option>`; });
             locFilterDropdown.value = uniqueTypes.includes(currentFilterVal) ? currentFilterVal : "All";
             
             data.forEach(loc => {
-                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>Type: ${loc.type}`);
-                const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(popup).addTo(map);
-                loc.markerRef = marker;
-                markers.push(marker);
-                
                 if(trkLoc) trkLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
-                if(remLoc) remLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
+                if(loc.lat !== null) {
+                    const marker = new mapboxgl.Marker().setLngLat([loc.lng, loc.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${loc.name}</b><br>${loc.type}`)).addTo(map);
+                    loc.markerRef = marker; markers.push(marker);
+                }
             });
 
-            // Need to nest truck fetch here so location data exists for the distance calculation
             fetch(`${API_URL}/trucks/`).then(res=>res.json()).then(truckData => {
                 globalTrucks = truckData;
-                
-                const resButtons = document.getElementById('resource-buttons');
-                const remTrk = document.getElementById('remove_truck');
-                if(resButtons) resButtons.innerHTML = '';
-                if(remTrk) remTrk.innerHTML = '<option value="">Select...</option>';
-                
                 truckData.forEach(t => {
-                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Status: ${t.status}<br>Driver: ${t.current_driver_name}`);
-                    const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(popup).addTo(map);
-                    t.markerRef = marker;
-                    markers.push(marker);
-
-                    if(remTrk) remTrk.innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
-                    if(t.resource_excel_url && resButtons) {
-                        resButtons.innerHTML += `<button class="btn btn-blue btn-inline" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Resources</button>`;
+                    if(t.lat !== null) {
+                        const marker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([t.lng, t.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<b>${t.truck_name}</b><br>Status: ${t.status}<br>Driver: ${t.current_driver_name}`)).addTo(map);
+                        t.markerRef = marker; markers.push(marker);
                     }
                 });
-
-                renderSidebarLists(); // Draw the sidebar UI
+                renderSidebarLists(); 
             });
         });
 
@@ -429,29 +345,53 @@
                 tbody.innerHTML = '';
                 data.forEach(log => {
                     const date = new Date(log.timestamp).toLocaleString();
-                    tbody.innerHTML += `<tr><td>${date}</td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
+                    tbody.innerHTML += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
                 });
             }
         });
     }
 
     function zoomToMax(lat, lng, index, type) {
+        if (lat === null) return;
         map.flyTo({ center: [lng, lat], zoom: 18, essential: true });
         if (type === 'loc' && globalLocations[index]) globalLocations[index].markerRef.togglePopup();
         else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
     }
 
-    // Refactored to reload data silently instead of refreshing the page
-    function removeEntity(type, selectId) {
-        const id = document.getElementById(selectId).value;
-        if(!id) return;
-        if(confirm("Are you sure you want to delete this?")) {
-            fetch(`${API_URL}/${type}/${id}`, { method: 'DELETE' })
-            .then(() => {
-                alert("Deleted successfully.");
-                loadData();
-            });
-        }
+    function submitLocation() {
+        fetch(`${API_URL}/locations/`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('loc_name').value,
+                type: document.getElementById('loc_type').value,
+                lat: parseFloat(document.getElementById('loc_lat').value),
+                lng: parseFloat(document.getElementById('loc_lng').value),
+                user: "Admin"
+            })
+        }).then(() => { alert("Location saved!"); resetLocForm(); loadData(); });
+    }
+
+    function fixLocationCoords() {
+        const loc_id = document.getElementById('edit_loc_id').value;
+        fetch(`${API_URL}/locations/${loc_id}`, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                lat: parseFloat(document.getElementById('loc_lat').value),
+                lng: parseFloat(document.getElementById('loc_lng').value)
+            })
+        }).then(() => { alert("Coordinates Updated!"); resetLocForm(); loadData(); switchTab('dashboard-view', document.querySelectorAll('nav button')[0]); });
+    }
+
+    function resetLocForm() {
+        document.getElementById('locationForm').reset();
+        document.getElementById('loc_name').disabled = false;
+        document.getElementById('loc_type').disabled = false;
+        document.getElementById('edit_loc_id').value = "";
+        document.getElementById('loc_desc_wrapper').style.display = 'none';
+        document.getElementById('btn-save-loc').style.display = 'block';
+        document.getElementById('btn-update-loc').style.display = 'none';
+        document.getElementById('btn-cancel-loc').style.display = 'none';
+        if (adminMarker) adminMarker.remove();
     }
 
     function submitTruck(action) {
@@ -459,7 +399,7 @@
             truck_name: document.getElementById('trk_name').value,
             license_plate: document.getElementById('trk_plate').value,
             purpose: document.getElementById('trk_purpose').value,
-            status: document.getElementById('trk_status').value, // Grab the new status field
+            status: document.getElementById('trk_status').value,
             start_fuel: parseFloat(document.getElementById('trk_fuel').value || 0),
             location_id: parseInt(document.getElementById('trk_loc').value || 1),
             resource_excel_url: document.getElementById('trk_excel').value,
@@ -468,40 +408,14 @@
 
         if (action === 'add') {
             fetch(`${API_URL}/trucks/`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
-            .then(() => {
-                alert("New truck created!");
-                document.getElementById('truckForm').reset();
-                loadData();
-            });
+            .then(() => { alert("New truck created!"); document.getElementById('truckForm').reset(); loadData(); });
         } else {
             const existing = globalTrucks.find(t => t.truck_name === payload.truck_name);
             if(!existing) return alert("Truck name not found for update!");
             fetch(`${API_URL}/trucks/${existing.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
-            .then(() => {
-                alert("Truck updated successfully!");
-                document.getElementById('truckForm').reset();
-                loadData();
-            });
+            .then(() => { alert("Truck updated successfully!"); document.getElementById('truckForm').reset(); loadData(); });
         }
     }
-
-    document.getElementById('locationForm')?.addEventListener('submit', e => {
-        e.preventDefault();
-        fetch(`${API_URL}/locations/`, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                name: document.getElementById('loc_name').value,
-                type: document.getElementById('loc_type').value,
-                lat: parseFloat(document.getElementById('loc_lat').value),
-                lng: parseFloat(document.getElementById('loc_lng').value)
-            })
-        }).then(() => {
-            alert("Location saved!");
-            document.getElementById('locationForm').reset();
-            loadData();
-        });
-    });
 </script>
-
 </body>
 </html>
