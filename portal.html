@@ -13,84 +13,237 @@
 
     <style>
         :root { 
-            --primary: #007bff; --success: #34c759; --danger: #ff3b30; 
-            --bg: #f2f2f7; --surface: #ffffff; --text: #1c1c1e; --text-muted: #8e8e93; 
+            --primary: #007bff; 
+            --success: #34c759; 
+            --danger: #ff3b30; 
+            --bg: #f2f2f7; 
+            --surface: #ffffff; 
+            --text: #1c1c1e; 
+            --text-muted: #8e8e93; 
         }
+        
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; padding: 0; background: var(--bg); color: var(--text); 
-            -webkit-tap-highlight-color: transparent; user-select: none; overscroll-behavior-y: none; 
+            margin: 0; 
+            padding: 0; 
+            background: var(--bg); 
+            color: var(--text); 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            overscroll-behavior-y: none; 
         }
-        input, select, textarea { user-select: auto; }
+        
+        input, select, textarea { 
+            user-select: auto; 
+        }
+        
         header { 
-            background: var(--surface); text-align: center; font-weight: 600; font-size: 17px; 
-            position: fixed; top: 0; width: 100%; z-index: 100; box-shadow: 0 1px 0 rgba(0,0,0,0.1); 
+            background: var(--primary); 
+            color: white; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 18px; 
+            position: fixed; 
+            top: 0; 
+            width: 100%; 
+            z-index: 100; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; 
         }
+        
         nav.bottom-bar { 
-            position: fixed; bottom: 0; width: 100%; background: var(--surface); display: flex; 
-            justify-content: space-around; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); z-index: 100; 
+            position: fixed; 
+            bottom: 0; 
+            width: 100%; 
+            background: var(--surface); 
+            display: flex; 
+            justify-content: space-around; 
+            box-shadow: 0 -1px 0 rgba(0,0,0,0.1); 
+            z-index: 100; 
             padding-bottom: env(safe-area-inset-bottom, 0px); 
         }
+        
         nav.bottom-bar button { 
-            background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 12px 0; 
-            flex: 1; text-align: center; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; 
+            background: none; 
+            border: none; 
+            color: var(--text-muted); 
+            font-size: 12px; 
+            padding: 12px 0; 
+            flex: 1; 
+            text-align: center; 
+            font-weight: 600; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 4px; 
         }
-        nav.bottom-bar button.active { color: var(--primary); }
-        nav.bottom-bar button::before { font-size: 20px; }
+        
+        nav.bottom-bar button.active { 
+            color: var(--primary); 
+        }
+        
+        nav.bottom-bar button::before { 
+            font-size: 20px; 
+        }
+        
         #btn-driver::before { content: "🚚"; } 
         #btn-schedule::before { content: "📅"; } 
         #btn-resources::before { content: "📋"; }
         
         .container { 
             padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; 
-            max-width: 600px; margin: 0 auto; 
+            max-width: 600px; 
+            margin: 0 auto; 
         }
         
-        .view-section { display: none; animation: fadeIn 0.2s ease-in-out; } 
-        #driver-view { display: block; } 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .view-section { 
+            display: none; 
+            animation: fadeIn 0.2s ease-in-out; 
+        } 
         
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
-        label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
+        #driver-view { 
+            display: block; 
+        } 
+        
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(5px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+        }
+        
+        .card { 
+            background: var(--surface); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+        }
+        
+        h2 { 
+            margin-top: 0; 
+            font-size: 1.2rem; 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 12px; 
+            margin-bottom: 15px;
+        }
+        
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+            color: var(--text-muted);
+        }
         
         input, select, textarea { 
-            width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; 
-            border: 1px solid #d1d1d6; border-radius: 8px; font-size: 16px; 
-            background: #fafafa; appearance: none; -webkit-appearance: none; 
+            width: 100%; 
+            padding: 14px; 
+            margin-top: 8px; 
+            box-sizing: border-box; 
+            border: 1px solid #d1d1d6; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            background: #fafafa; 
+            appearance: none; 
+            -webkit-appearance: none; 
         }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
+        
+        input:focus, select:focus, textarea:focus { 
+            outline: none; 
+            border-color: var(--primary); 
+            background: var(--surface);
+        }
         
         button.btn { 
-            margin-top: 20px; padding: 16px; border: none; border-radius: 10px; cursor: pointer; 
-            width: 100%; font-size: 16px; font-weight: bold; color: white; transition: transform 0.1s; 
+            margin-top: 20px; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 16px; 
+            font-weight: bold; 
+            color: white; 
+            transition: transform 0.1s; 
         }
-        button.btn:active { transform: scale(0.97); } 
+        
+        button.btn:active { 
+            transform: scale(0.97); 
+        } 
+        
         .btn-blue { background: var(--primary); } 
         .btn-green { background: var(--success); } 
         .btn-red { background: var(--danger); } 
         
         .modal { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; 
-            padding: 20px; box-sizing: border-box;
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            z-index: 1000; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            box-sizing: border-box;
         }
-        .modal-content { background: var(--surface); padding: 20px; border-radius: 12px; width: 100%; max-width: 350px; }
+        
+        .modal-content { 
+            background: var(--surface); 
+            padding: 20px; 
+            border-radius: 12px; 
+            width: 100%; 
+            max-width: 350px; 
+        }
         
         #loading-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: var(--bg, #f4f4f9); z-index: 9999; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; transition: opacity 0.5s ease-out; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: var(--bg, #f4f4f9); 
+            z-index: 9999; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            transition: opacity 0.5s ease-out; 
         }
+        
         .spinner { 
-            width: 40px; height: 40px; border: 4px solid #ccc; border-top-color: #007bff; 
-            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; 
+            width: 40px; 
+            height: 40px; 
+            border: 4px solid #ccc; 
+            border-top-color: #007bff; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite; 
+            margin-bottom: 20px; 
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
-        #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
+        
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+        
+        #loading-text { 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            color: #333; 
+            margin-bottom: 5px; 
+        }
+        
+        #loading-subtext { 
+            font-size: 0.9rem; 
+            color: #666; 
+            text-align: center; 
+            padding: 0 20px; 
+        }
     </style>
 </head>
 <body>
@@ -101,7 +254,8 @@
     <div id="loading-subtext"></div>
 </div>
 
-<header>CRS Warehouse Dashboard</header>
+<!-- Dynamic header pulls from race settings -->
+<header id="mobile-banner">Loading Event...</header>
 
 <div class="container">
     <div id="driver-view" class="view-section">
@@ -185,13 +339,11 @@
         <input type="text" id="new_dr_last" maxlength="1">
         <label>Phone:</label>
         <input type="tel" id="new_dr_phone" inputmode="tel">
-        
         <button class="btn btn-green" onclick="saveDriver()">Save Driver</button>
         <button class="btn btn-red" onclick="document.getElementById('driverModal').style.display='none'">Cancel</button>
     </div>
 </div>
 
-<!-- NEW LOCATION MODAL -->
 <div id="locationModal" class="modal">
     <div class="modal-content">
         <h3>Add Missing Location</h3>
@@ -199,8 +351,10 @@
         
         <label>Location Name (e.g. Toronto Track):</label>
         <input type="text" id="new_loc_name">
+        
         <label>Sub Location (e.g. Loading Bay 2):</label>
         <input type="text" id="new_loc_type">
+        
         <label>Where is this?</label>
         <textarea id="new_loc_desc" rows="3" placeholder="Describe where you parked..."></textarea>
         
@@ -213,8 +367,13 @@
     const API_URL = "https://crsdashboard.onrender.com";
     
     function switchTab(tabId, btn) {
-        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.view-section').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('nav.bottom-bar button').forEach(el => {
+            el.classList.remove('active');
+        });
+        
         document.getElementById(tabId).style.display = 'block';
         btn.classList.add('active');
         window.scrollTo(0, 0); 
@@ -223,50 +382,58 @@
     function loadData() {
         document.getElementById('loading-overlay').style.display = 'none';
 
+        // Fetch Settings alongside the data
         Promise.all([
             fetch(`${API_URL}/drivers/`).then(res => res.json()),
             fetch(`${API_URL}/locations/`).then(res => res.json()),
-            fetch(`${API_URL}/trucks/`).then(res => res.json())
+            fetch(`${API_URL}/trucks/`).then(res => res.json()),
+            fetch(`${API_URL}/settings/race_name`).then(res => res.json())
         ])
-        .then(([driversData, locationsData, trucksData]) => {
+        .then(([driversData, locationsData, trucksData, raceSettings]) => {
             
-            // 1. Load Drivers
+            // Set mobile banner
+            document.getElementById('mobile-banner').innerText = raceSettings.value;
+
+            // 1. Populate Drivers
             const drvSels = ['trip_driver', 'fuel_driver'];
-            drvSels.forEach(id => {
-                document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>';
+            drvSels.forEach(id => { 
+                document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>'; 
             });
+            
             driversData.forEach(d => { 
-                drvSels.forEach(id => {
+                drvSels.forEach(id => { 
                     document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; 
-                });
+                }); 
             });
 
-            // 2. Load Locations
+            // 2. Populate Locations
             const locSels = ['trip_location'];
-            locSels.forEach(id => {
-                document.getElementById(id).innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>';
+            locSels.forEach(id => { 
+                document.getElementById(id).innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>'; 
             });
+            
             locationsData.forEach(loc => { 
-                locSels.forEach(id => {
+                locSels.forEach(id => { 
                     document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`; 
-                });
+                }); 
             });
 
-            // 3. Load Trucks
+            // 3. Populate Trucks
             const resButtons = document.getElementById('resource-buttons');
             const trkSels = ['trip_truck', 'fuel_truck'];
             
-            trkSels.forEach(id => {
-                document.getElementById(id).innerHTML = '<option value="">Select truck...</option>';
+            trkSels.forEach(id => { 
+                document.getElementById(id).innerHTML = '<option value="">Select truck...</option>'; 
             });
             resButtons.innerHTML = '';
             
             trucksData.forEach(t => {
-                trkSels.forEach(id => {
-                    document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+                trkSels.forEach(id => { 
+                    document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; 
                 });
-                if(t.resource_excel_url) {
-                    resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`;
+                
+                if(t.resource_excel_url) { 
+                    resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`; 
                 }
             });
         });
@@ -296,9 +463,8 @@
                 phone: document.getElementById('new_dr_phone').value 
             })
         }).then(() => { 
-            // Clear inputs for the next time the modal opens
-            document.getElementById('new_dr_first').value = '';
-            document.getElementById('new_dr_last').value = '';
+            document.getElementById('new_dr_first').value = ''; 
+            document.getElementById('new_dr_last').value = ''; 
             document.getElementById('new_dr_phone').value = '';
             
             document.getElementById('driverModal').style.display='none'; 
@@ -307,24 +473,24 @@
     }
 
     function saveLocation() {
-        // Find driver name to log who created it, fallback to "Driver" if none selected
         const drSelect = document.getElementById('trip_driver');
         let userName = "Driver";
-        if (drSelect.selectedIndex > 0) userName = drSelect.options[drSelect.selectedIndex].text;
+        if (drSelect.selectedIndex > 0) {
+            userName = drSelect.options[drSelect.selectedIndex].text;
+        }
 
         fetch(`${API_URL}/locations/`, {
             method: 'POST', 
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                name: document.getElementById('new_loc_name').value,
-                type: document.getElementById('new_loc_type').value,
-                description: document.getElementById('new_loc_desc').value,
-                user: userName
+            body: JSON.stringify({ 
+                name: document.getElementById('new_loc_name').value, 
+                type: document.getElementById('new_loc_type').value, 
+                description: document.getElementById('new_loc_desc').value, 
+                user: userName 
             })
         }).then(() => { 
-            // Clear inputs for the next time the modal opens
-            document.getElementById('new_loc_name').value = '';
-            document.getElementById('new_loc_type').value = '';
+            document.getElementById('new_loc_name').value = ''; 
+            document.getElementById('new_loc_type').value = ''; 
             document.getElementById('new_loc_desc').value = '';
             
             document.getElementById('locationModal').style.display='none'; 
@@ -371,7 +537,9 @@
     });
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); });
+        window.addEventListener('load', () => { 
+            navigator.serviceWorker.register('/sw.js'); 
+        });
     }
 </script>
 </body>
