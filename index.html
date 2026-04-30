@@ -123,11 +123,29 @@
     <div id="admin-view" class="view-section">
         <div class="form-grid">
             <div class="card" id="location-card">
-                <h2>Manage Locations</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2 style="border:none; margin:0; padding:0;">Locations</h2>
+                    <div>
+                        <button class="btn btn-inline btn-blue" id="loc-tab-add" onclick="setLocMode('add')">Add New</button>
+                        <button class="btn btn-inline" id="loc-tab-manage" style="background:#ddd; color:#333;" onclick="setLocMode('manage')">Manage</button>
+                    </div>
+                </div>
+
+                <div id="loc-manage-selector" style="display:none; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #ccc;">
+                    <label>Select Location to Edit:</label>
+                    <select id="manage_loc_select" onchange="loadLocForEdit()">
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+
                 <form id="locationForm">
                     <input type="hidden" id="edit_loc_id" value="">
-                    <label>Location Name:</label><input type="text" id="loc_name" required>
-                    <label>Sub Location (Type):</label><input type="text" id="loc_type" required>
+                    
+                    <label>Location Name:</label>
+                    <input type="text" id="loc_name" required>
+                    
+                    <label>Sub Location (Type):</label>
+                    <input type="text" id="loc_type" required>
                     
                     <div id="loc_desc_wrapper" style="display:none; background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-top: 10px;">
                         <b>Driver Notes:</b> <span id="loc_desc_text"></span>
@@ -149,13 +167,18 @@
                     <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Click the map directly to drop a pin.</div>
 
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <div style="flex: 1;"><label>Latitude:</label><input type="number" id="loc_lat" step="any" required></div>
-                        <div style="flex: 1;"><label>Longitude:</label><input type="number" id="loc_lng" step="any" required></div>
+                        <div style="flex: 1;">
+                            <label>Latitude:</label>
+                            <input type="number" id="loc_lat" step="any">
+                        </div>
+                        <div style="flex: 1;">
+                            <label>Longitude:</label>
+                            <input type="number" id="loc_lng" step="any">
+                        </div>
                     </div>
                     
                     <button type="button" class="btn btn-green" id="btn-save-loc" onclick="submitLocation()">Save New Location</button>
-                    <button type="button" class="btn btn-orange" id="btn-update-loc" onclick="fixLocationCoords()" style="display:none;">Update Missing Coordinates</button>
-                    <button type="button" class="btn btn-red" id="btn-cancel-loc" onclick="resetLocForm()" style="display:none;">Cancel Edit</button>
+                    <button type="button" class="btn btn-orange" id="btn-update-loc" onclick="updateLocation()" style="display:none;">Save Changes</button>
                 </form>
             </div>
 
@@ -329,27 +352,6 @@
         });
     }
 
-    function handleLocationClick(index) {
-        const loc = globalLocations[index];
-        if (loc.lat === null) {
-            switchTab('admin-view', document.querySelectorAll('nav button')[1]);
-            $('edit_loc_id').value = loc.id;
-            $('loc_name').value = loc.name; $('loc_name').disabled = true;
-            $('loc_type').value = loc.type; $('loc_type').disabled = true;
-            
-            if(loc.description) {
-                $('loc_desc_wrapper').style.display = 'block';
-                $('loc_desc_text').innerText = loc.description;
-            }
-            $('btn-save-loc').style.display = 'none';
-            $('btn-update-loc').style.display = 'block';
-            $('btn-cancel-loc').style.display = 'block';
-            alert(`Please use the map to drop a pin for ${loc.name} - ${loc.type}.`);
-        } else {
-            zoomToMax(loc.lat, loc.lng, index, 'loc');
-        }
-    }
-
     // High-Efficiency Async Data Loader
     async function loadData() {
         markers.forEach(m => m.remove()); markers = [];
@@ -375,6 +377,12 @@
 
         // 3. Locations
         globalLocations = locations;
+        if($('manage_loc_select')) {
+            $('manage_loc_select').innerHTML = '<option value="">Select...</option>';
+            locations.forEach(loc => {
+                $('manage_loc_select').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
+            });
+        }
         if($('trk_loc')) $('trk_loc').innerHTML = '';
         if($('remove_location')) $('remove_location').innerHTML = '<option value="">Select...</option>';
         
@@ -420,6 +428,99 @@
         }
     }
 
+    function handleLocationClick(index) {
+        const loc = globalLocations[index];
+        if (loc.lat === null) {
+            switchTab('admin-view', document.querySelectorAll('nav button')[1]);
+            setLocMode('manage');
+            $('manage_loc_select').value = loc.id;
+            loadLocForEdit();
+            alert(`Please use the map to drop a pin for ${loc.name} - ${loc.type}.`);
+        } else {
+            zoomToMax(loc.lat, loc.lng, index, 'loc');
+        }
+    }
+
+    function setLocMode(mode) {
+        if(mode === 'add') {
+            $('loc-tab-add').className = 'btn btn-inline btn-blue';
+            $('loc-tab-manage').className = 'btn btn-inline';
+            $('loc-tab-manage').style.background = '#ddd'; $('loc-tab-manage').style.color = '#333';
+            $('loc-manage-selector').style.display = 'none';
+            resetLocForm();
+        } else {
+            $('loc-tab-manage').className = 'btn btn-inline btn-blue';
+            $('loc-tab-manage').style.background = ''; $('loc-tab-manage').style.color = '';
+            $('loc-tab-add').className = 'btn btn-inline';
+            $('loc-tab-add').style.background = '#ddd'; $('loc-tab-add').style.color = '#333';
+            $('loc-manage-selector').style.display = 'block';
+            resetLocForm();
+            $('btn-save-loc').style.display = 'none';
+        }
+    }
+
+    function loadLocForEdit() {
+        const id = $('manage_loc_select').value;
+        if(!id) { resetLocForm(); $('btn-save-loc').style.display = 'none'; return; }
+
+        const loc = globalLocations.find(l => l.id == id);
+        if(!loc) return;
+
+        $('edit_loc_id').value = loc.id;
+        $('loc_name').value = loc.name;
+        $('loc_type').value = loc.type;
+
+        if(loc.description) {
+            $('loc_desc_wrapper').style.display = 'block';
+            $('loc_desc_text').innerText = loc.description;
+        } else {
+            $('loc_desc_wrapper').style.display = 'none';
+        }
+
+        if(loc.lat !== null && loc.lng !== null) {
+            $('loc_lat').value = loc.lat;
+            $('loc_lng').value = loc.lng;
+            adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 });
+            setAdminMarker(loc.lat, loc.lng);
+        } else {
+            $('loc_lat').value = ''; $('loc_lng').value = '';
+            if (adminMarker) adminMarker.remove();
+        }
+
+        $('btn-save-loc').style.display = 'none';
+        $('btn-update-loc').style.display = 'block';
+    }
+
+    async function updateLocation() {
+        const latVal = $('loc_lat').value;
+        const lngVal = $('loc_lng').value;
+
+        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', {
+            name: $('loc_name').value,
+            type: $('loc_type').value,
+            lat: latVal ? parseFloat(latVal) : null,
+            lng: lngVal ? parseFloat(lngVal) : null
+        });
+        alert("Location Updated!");
+        loadData();
+        setLocMode('add');
+    }
+
+    function resetLocForm() {
+        $('locationForm').reset();
+        $('edit_loc_id').value = "";
+        $('loc_desc_wrapper').style.display = 'none';
+
+        if($('loc-manage-selector').style.display === 'block') {
+            $('btn-save-loc').style.display = 'none';
+            $('btn-update-loc').style.display = 'none';
+        } else {
+            $('btn-save-loc').style.display = 'block';
+            $('btn-update-loc').style.display = 'none';
+        }
+        if (adminMarker) adminMarker.remove();
+    }
+    
     function zoomToMax(lat, lng, index, type) {
         if (lat === null) return;
         map.flyTo({ center: [lng, lat], zoom: 18, essential: true });
@@ -434,23 +535,6 @@
             lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value), user: "Admin"
         });
         alert("Location saved!"); resetLocForm(); loadData();
-    }
-
-    async function fixLocationCoords() {
-        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', {
-            lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value) 
-        });
-        alert("Coordinates Updated!"); resetLocForm(); loadData(); switchTab('dashboard-view', document.querySelectorAll('nav button')[0]);
-    }
-
-    function resetLocForm() {
-        $('locationForm').reset();
-        $('loc_name').disabled = false; $('loc_type').disabled = false; $('edit_loc_id').value = "";
-        $('loc_desc_wrapper').style.display = 'none';
-        $('btn-save-loc').style.display = 'block';
-        $('btn-update-loc').style.display = 'none';
-        $('btn-cancel-loc').style.display = 'none';
-        if (adminMarker) adminMarker.remove();
     }
 
     async function removeEntity(type, selectId) {
