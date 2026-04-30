@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+import json
 
 load_dotenv()
 
@@ -29,6 +30,7 @@ class DBSetting(Base):
 
 class DBLocation(Base):
     __tablename__ = "locations"
+    icon_url = Column(String, nullable=True)
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     type = Column(String)
@@ -45,6 +47,7 @@ class DBDriver(Base):
 
 class DBTruck(Base):
     __tablename__ = "trucks"
+    icon_url = Column(String, nullable=True)
     id = Column(Integer, primary_key=True, index=True)
     truck_name = Column(String, unique=True, index=True)
     license_plate = Column(String)
@@ -111,11 +114,12 @@ def get_db():
     finally: db.close()
 
 class SettingUpdate(BaseModel): value: str
+class SettingListUpdate(BaseModel): items: List[str]
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
-class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; user: str = "Admin"
-class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None
-class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
-class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
+class LocationCreate(BaseModel): icon_url: Optional[str] = ""; name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; user: str = "Admin"
+class LocationUpdate(BaseModel): icon_url: Optional[str] = ""; name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None
+class TruckCreate(BaseModel): icon_url: Optional[str] = ""; truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
+class TruckUpdate(BaseModel): icon_url: Optional[str] = ""; license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
@@ -144,6 +148,28 @@ def update_setting(key: str, setting_update: SettingUpdate, db: Session = Depend
     else: setting.value = setting_update.value
     log_activity(db, "Admin", "Update Settings", f"Changed {key} to {setting_update.value}.")
     return {"message": "Setting updated!"}
+
+@app.get("/settings/list/{key}")
+def get_setting_list(key: str, db: Session = Depends(get_db)):
+    setting = db.query(DBSetting).filter(DBSetting.key == key).first()
+    if setting and setting.value:
+        try:
+            return {"items": json.loads(setting.value)}
+        except json.JSONDecodeError:
+            return {"items": []}
+    return {"items": []}
+
+@app.put("/settings/list/{key}")
+def update_setting_list(key: str, list_update: SettingListUpdate, db: Session = Depends(get_db)):
+    setting = db.query(DBSetting).filter(DBSetting.key == key).first()
+    json_val = json.dumps(list_update.items)
+    if not setting:
+        db.add(DBSetting(key=key, value=json_val))
+    else:
+        setting.value = json_val
+    log_activity(db, "Admin", "Update Settings", f"Updated list for {key}.")
+    db.commit()
+    return {"message": "List updated!"}
 
 @app.post("/wipe/")
 def factory_reset():
