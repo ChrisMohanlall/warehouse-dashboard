@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRS Driver Portal</title>
-
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,238 +11,42 @@
     <link rel="apple-touch-icon" href="/icon-192.png">
 
     <style>
-        :root { 
-            --primary: #007bff; 
-            --success: #34c759; 
-            --danger: #ff3b30; 
-            --bg: #f2f2f7; 
-            --surface: #ffffff; 
-            --text: #1c1c1e; 
-            --text-muted: #8e8e93; 
-        }
+        :root { --primary: #007bff; --success: #34c759; --danger: #ff3b30; --bg: #f2f2f7; --surface: #ffffff; --text: #1c1c1e; --text-muted: #8e8e93; }
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; user-select: none; overscroll-behavior-y: none; }
+        input, select, textarea { user-select: auto; }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            background: var(--bg); 
-            color: var(--text); 
-            -webkit-tap-highlight-color: transparent; 
-            user-select: none; 
-            overscroll-behavior-y: none; 
-        }
+        header { background: var(--primary); color: white; text-align: center; font-weight: bold; font-size: 18px; position: fixed; top: 0; width: 100%; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; }
         
-        input, select, textarea { 
-            user-select: auto; 
-        }
+        nav.bottom-bar { position: fixed; bottom: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0px); }
+        nav.bottom-bar button { background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 12px 0; flex: 1; text-align: center; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        nav.bottom-bar button.active { color: var(--primary); }
+        nav.bottom-bar button::before { font-size: 20px; }
+        #btn-driver::before { content: "🚚"; } #btn-schedule::before { content: "📅"; } #btn-resources::before { content: "📋"; }
         
-        header { 
-            background: var(--primary); 
-            color: white; 
-            text-align: center; 
-            font-weight: bold; 
-            font-size: 18px; 
-            position: fixed; 
-            top: 0; 
-            width: 100%; 
-            z-index: 100; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; 
-        }
+        .container { padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; max-width: 600px; margin: 0 auto; }
+        .view-section { display: none; animation: fadeIn 0.2s ease-in-out; } 
+        #driver-view { display: block; } 
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        nav.bottom-bar { 
-            position: fixed; 
-            bottom: 0; 
-            width: 100%; 
-            background: var(--surface); 
-            display: flex; 
-            justify-content: space-around; 
-            box-shadow: 0 -1px 0 rgba(0,0,0,0.1); 
-            z-index: 100; 
-            padding-bottom: env(safe-area-inset-bottom, 0px); 
-        }
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
+        label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
+        input, select, textarea { width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 16px; background: #fafafa; appearance: none; -webkit-appearance: none; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
         
-        nav.bottom-bar button { 
-            background: none; 
-            border: none; 
-            color: var(--text-muted); 
-            font-size: 12px; 
-            padding: 12px 0; 
-            flex: 1; 
-            text-align: center; 
-            font-weight: 600; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            gap: 4px; 
-        }
+        button.btn { margin-top: 20px; padding: 16px; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white; transition: transform 0.1s; }
+        button.btn:active { transform: scale(0.97); } 
+        .btn-blue { background: var(--primary); } .btn-green { background: var(--success); } .btn-red { background: var(--danger); } 
         
-        nav.bottom-bar button.active { 
-            color: var(--primary); 
-        }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
+        .modal-content { background: var(--surface); padding: 20px; border-radius: 12px; width: 100%; max-width: 350px; }
         
-        nav.bottom-bar button::before { 
-            font-size: 20px; 
-        }
-        
-        #btn-driver::before { content: "🚚"; } 
-        #btn-schedule::before { content: "📅"; } 
-        #btn-resources::before { content: "📋"; }
-        
-        .container { 
-            padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; 
-            max-width: 600px; 
-            margin: 0 auto; 
-        }
-        
-        .view-section { 
-            display: none; 
-            animation: fadeIn 0.2s ease-in-out; 
-        } 
-        
-        #driver-view { 
-            display: block; 
-        } 
-        
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(5px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        
-        .form-grid { 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 20px; 
-        }
-        
-        .card { 
-            background: var(--surface); 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
-        }
-        
-        h2 { 
-            margin-top: 0; 
-            font-size: 1.2rem; 
-            border-bottom: 1px solid #eee; 
-            padding-bottom: 12px; 
-            margin-bottom: 15px;
-        }
-        
-        label { 
-            display: block; 
-            margin-top: 15px; 
-            font-weight: 600; 
-            font-size: 0.85rem; 
-            color: var(--text-muted);
-        }
-        
-        input, select, textarea { 
-            width: 100%; 
-            padding: 14px; 
-            margin-top: 8px; 
-            box-sizing: border-box; 
-            border: 1px solid #d1d1d6; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            background: #fafafa; 
-            appearance: none; 
-            -webkit-appearance: none; 
-        }
-        
-        input:focus, select:focus, textarea:focus { 
-            outline: none; 
-            border-color: var(--primary); 
-            background: var(--surface);
-        }
-        
-        button.btn { 
-            margin-top: 20px; 
-            padding: 16px; 
-            border: none; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            width: 100%; 
-            font-size: 16px; 
-            font-weight: bold; 
-            color: white; 
-            transition: transform 0.1s; 
-        }
-        
-        button.btn:active { 
-            transform: scale(0.97); 
-        } 
-        
-        .btn-blue { background: var(--primary); } 
-        .btn-green { background: var(--success); } 
-        .btn-red { background: var(--danger); } 
-        
-        .modal { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            z-index: 1000; 
-            justify-content: center; 
-            align-items: center; 
-            padding: 20px; 
-            box-sizing: border-box;
-        }
-        
-        .modal-content { 
-            background: var(--surface); 
-            padding: 20px; 
-            border-radius: 12px; 
-            width: 100%; 
-            max-width: 350px; 
-        }
-        
-        #loading-overlay { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: var(--bg, #f4f4f9); 
-            z-index: 9999; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            transition: opacity 0.5s ease-out; 
-        }
-        
-        .spinner { 
-            width: 40px; 
-            height: 40px; 
-            border: 4px solid #ccc; 
-            border-top-color: #007bff; 
-            border-radius: 50%; 
-            animation: spin 1s linear infinite; 
-            margin-bottom: 20px; 
-        }
-        
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
-        
-        #loading-text { 
-            font-weight: bold; 
-            font-size: 1.1rem; 
-            color: #333; 
-            margin-bottom: 5px; 
-        }
-        
-        #loading-subtext { 
-            font-size: 0.9rem; 
-            color: #666; 
-            text-align: center; 
-            padding: 0 20px; 
-        }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg, #f4f4f9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease-out; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #ccc; border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
+        #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
     </style>
 </head>
 <body>
@@ -254,7 +57,6 @@
     <div id="loading-subtext"></div>
 </div>
 
-<!-- Dynamic header pulls from race settings -->
 <header id="mobile-banner">Loading Event...</header>
 
 <div class="container">
@@ -263,24 +65,12 @@
             <div class="card">
                 <h2>Log Trip</h2>
                 <form id="tripForm">
-                    <label>Driver</label>
-                    <select id="trip_driver" onchange="checkDropdowns()" required></select>
-                    
-                    <label>Truck</label>
-                    <select id="trip_truck" required></select>
-                    
-                    <label>Parked Location</label>
-                    <select id="trip_location" onchange="checkDropdowns()" required></select>
-
-                    <label>Current Trip End KM</label>
-                    <input type="number" id="trip_km" required step="0.1" inputmode="decimal"> 
-                    
-                    <label>End Fuel (%)</label>
-                    <input type="number" id="trip_fuel" required inputmode="numeric">
-                    
-                    <label>Damage Notes</label>
-                    <textarea id="trip_notes" rows="3"></textarea>
-                    
+                    <label>Driver</label><select id="trip_driver" onchange="checkDropdowns()" required></select>
+                    <label>Truck</label><select id="trip_truck" required></select>
+                    <label>Parked Location</label><select id="trip_location" onchange="checkDropdowns()" required></select>
+                    <label>Current Trip End KM</label><input type="number" id="trip_km" required step="0.1" inputmode="decimal"> 
+                    <label>End Fuel (%)</label><input type="number" id="trip_fuel" required inputmode="numeric">
+                    <label>Damage Notes</label><textarea id="trip_notes" rows="3"></textarea>
                     <button type="submit" class="btn btn-blue">Submit Trip Log</button>
                 </form>
             </div>
@@ -288,18 +78,10 @@
             <div class="card">
                 <h2>Fuel Up</h2>
                 <form id="fuelForm">
-                    <label>Driver</label>
-                    <select id="fuel_driver" onchange="checkDropdowns()" required></select>
-                    
-                    <label>Truck</label>
-                    <select id="fuel_truck" required></select>
-                    
-                    <label>KM at Fuel Up</label>
-                    <input type="number" id="fuel_km" required step="0.1" inputmode="decimal">
-                    
-                    <label>Receipt Photo URL</label>
-                    <input type="text" id="fuel_receipt" required>
-                    
+                    <label>Driver</label><select id="fuel_driver" onchange="checkDropdowns()" required></select>
+                    <label>Truck</label><select id="fuel_truck" required></select>
+                    <label>KM at Fuel Up</label><input type="number" id="fuel_km" required step="0.1" inputmode="decimal">
+                    <label>Receipt Photo URL</label><input type="text" id="fuel_receipt" required>
                     <button type="submit" class="btn btn-green">Log Fuel Up</button>
                 </form>
             </div>
@@ -311,7 +93,7 @@
             <h2>Race Schedule</h2>
             <p style="color: var(--text-muted); font-size: 0.9rem;">Access the master logistics schedule below.</p>
             <input type="url" id="master_schedule_link" placeholder="Paste link here...">
-            <button class="btn btn-blue" onclick="window.open(document.getElementById('master_schedule_link').value, '_blank')">Open Schedule</button>
+            <button class="btn btn-blue" onclick="window.open($('master_schedule_link').value, '_blank')">Open Schedule</button>
         </div>
     </div>
 
@@ -333,14 +115,11 @@
 <div id="driverModal" class="modal">
     <div class="modal-content">
         <h3>Add New Driver</h3>
-        <label>First Name:</label>
-        <input type="text" id="new_dr_first">
-        <label>Last Initial:</label>
-        <input type="text" id="new_dr_last" maxlength="1">
-        <label>Phone:</label>
-        <input type="tel" id="new_dr_phone" inputmode="tel">
+        <label>First Name:</label><input type="text" id="new_dr_first">
+        <label>Last Initial:</label><input type="text" id="new_dr_last" maxlength="1">
+        <label>Phone:</label><input type="tel" id="new_dr_phone" inputmode="tel">
         <button class="btn btn-green" onclick="saveDriver()">Save Driver</button>
-        <button class="btn btn-red" onclick="document.getElementById('driverModal').style.display='none'">Cancel</button>
+        <button class="btn btn-red" onclick="$('driverModal').style.display='none'">Cancel</button>
     </div>
 </div>
 
@@ -348,199 +127,139 @@
     <div class="modal-content">
         <h3>Add Missing Location</h3>
         <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">Provide a description so the Admin team can set the coordinates later.</p>
-        
-        <label>Location Name (e.g. Toronto Track):</label>
-        <input type="text" id="new_loc_name">
-        
-        <label>Sub Location (e.g. Loading Bay 2):</label>
-        <input type="text" id="new_loc_type">
-        
-        <label>Where is this?</label>
-        <textarea id="new_loc_desc" rows="3" placeholder="Describe where you parked..."></textarea>
-        
+        <label>Location Name (e.g. Toronto Track):</label><input type="text" id="new_loc_name">
+        <label>Sub Location (e.g. Loading Bay 2):</label><input type="text" id="new_loc_type">
+        <label>Where is this?</label><textarea id="new_loc_desc" rows="3" placeholder="Describe where you parked..."></textarea>
         <button class="btn btn-blue" onclick="saveLocation()">Add to List</button>
-        <button class="btn btn-red" onclick="document.getElementById('locationModal').style.display='none'">Cancel</button>
+        <button class="btn btn-red" onclick="$('locationModal').style.display='none'">Cancel</button>
     </div>
 </div>
 
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     
+    // UTILITY: Fast DOM selector
+    const $ = id => document.getElementById(id);
+    
+    // UTILITY: Centralized API Fetcher
+    async function apiCall(endpoint, method = 'GET', body = null) {
+        const options = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) options.body = JSON.stringify(body);
+        const res = await fetch(`${API_URL}${endpoint}`, options);
+        if (!res.ok) throw new Error("API Connection Failed");
+        return res.json();
+    }
+    
     function switchTab(tabId, btn) {
-        document.querySelectorAll('.view-section').forEach(el => {
-            el.style.display = 'none';
-        });
-        document.querySelectorAll('nav.bottom-bar button').forEach(el => {
-            el.classList.remove('active');
-        });
-        
-        document.getElementById(tabId).style.display = 'block';
+        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
+        $(tabId).style.display = 'block';
         btn.classList.add('active');
         window.scrollTo(0, 0); 
     }
 
-    function loadData() {
-        document.getElementById('loading-overlay').style.display = 'none';
+    // High-Efficiency Async Data Loader
+    async function loadData() {
+        $('loading-overlay').style.display = 'none';
 
-        // Fetch Settings alongside the data
-        Promise.all([
-            fetch(`${API_URL}/drivers/`).then(res => res.json()),
-            fetch(`${API_URL}/locations/`).then(res => res.json()),
-            fetch(`${API_URL}/trucks/`).then(res => res.json()),
-            fetch(`${API_URL}/settings/race_name`).then(res => res.json())
-        ])
-        .then(([driversData, locationsData, trucksData, raceSettings]) => {
+        const [drivers, locations, trucks, raceSettings] = await Promise.all([
+            apiCall('/drivers/'),
+            apiCall('/locations/'),
+            apiCall('/trucks/'),
+            apiCall('/settings/race_name')
+        ]);
             
-            // Set mobile banner
-            document.getElementById('mobile-banner').innerText = raceSettings.value;
+        $('mobile-banner').innerText = raceSettings.value;
 
-            // 1. Populate Drivers
-            const drvSels = ['trip_driver', 'fuel_driver'];
-            drvSels.forEach(id => { 
-                document.getElementById(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>'; 
-            });
-            
-            driversData.forEach(d => { 
-                drvSels.forEach(id => { 
-                    document.getElementById(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; 
-                }); 
-            });
+        // Populate Drivers
+        ['trip_driver', 'fuel_driver'].forEach(id => { 
+            $(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>'; 
+            drivers.forEach(d => { $(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; }); 
+        });
 
-            // 2. Populate Locations
-            const locSels = ['trip_location'];
-            locSels.forEach(id => { 
-                document.getElementById(id).innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>'; 
-            });
-            
-            locationsData.forEach(loc => { 
-                locSels.forEach(id => { 
-                    document.getElementById(id).innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`; 
-                }); 
-            });
+        // Populate Locations
+        $('trip_location').innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>'; 
+        locations.forEach(loc => { $('trip_location').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`; }); 
 
-            // 3. Populate Trucks
-            const resButtons = document.getElementById('resource-buttons');
-            const trkSels = ['trip_truck', 'fuel_truck'];
-            
-            trkSels.forEach(id => { 
-                document.getElementById(id).innerHTML = '<option value="">Select truck...</option>'; 
-            });
-            resButtons.innerHTML = '';
-            
-            trucksData.forEach(t => {
-                trkSels.forEach(id => { 
-                    document.getElementById(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; 
-                });
-                
-                if(t.resource_excel_url) { 
-                    resButtons.innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`; 
-                }
-            });
+        // Populate Trucks & Resources
+        ['trip_truck', 'fuel_truck'].forEach(id => { $(id).innerHTML = '<option value="">Select truck...</option>'; });
+        $('resource-buttons').innerHTML = '';
+        
+        trucks.forEach(t => {
+            ['trip_truck', 'fuel_truck'].forEach(id => { $(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
+            if(t.resource_excel_url) $('resource-buttons').innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`; 
         });
     }
 
     loadData();
 
     function checkDropdowns() {
-        if(document.getElementById('trip_driver').value === "NEW" || document.getElementById('fuel_driver').value === "NEW") {
-            document.getElementById('driverModal').style.display = 'flex';
-            document.getElementById('trip_driver').value = ""; 
-            document.getElementById('fuel_driver').value = ""; 
+        if($('trip_driver').value === "NEW" || $('fuel_driver').value === "NEW") {
+            $('driverModal').style.display = 'flex';
+            $('trip_driver').value = ""; $('fuel_driver').value = ""; 
         }
-        if(document.getElementById('trip_location').value === "NEW") {
-            document.getElementById('locationModal').style.display = 'flex';
-            document.getElementById('trip_location').value = "";
+        if($('trip_location').value === "NEW") {
+            $('locationModal').style.display = 'flex';
+            $('trip_location').value = "";
         }
     }
 
-    function saveDriver() {
-        fetch(`${API_URL}/drivers/`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                first_name: document.getElementById('new_dr_first').value, 
-                last_initial: document.getElementById('new_dr_last').value, 
-                phone: document.getElementById('new_dr_phone').value 
-            })
-        }).then(() => { 
-            document.getElementById('new_dr_first').value = ''; 
-            document.getElementById('new_dr_last').value = ''; 
-            document.getElementById('new_dr_phone').value = '';
-            
-            document.getElementById('driverModal').style.display='none'; 
-            loadData(); 
+    // Refactored POST handlers
+    async function saveDriver() {
+        await apiCall('/drivers/', 'POST', { 
+            first_name: $('new_dr_first').value, 
+            last_initial: $('new_dr_last').value, 
+            phone: $('new_dr_phone').value 
         });
+        $('new_dr_first').value = ''; $('new_dr_last').value = ''; $('new_dr_phone').value = '';
+        $('driverModal').style.display='none'; 
+        loadData(); 
     }
 
-    function saveLocation() {
-        const drSelect = document.getElementById('trip_driver');
-        let userName = "Driver";
-        if (drSelect.selectedIndex > 0) {
-            userName = drSelect.options[drSelect.selectedIndex].text;
-        }
+    async function saveLocation() {
+        const drSelect = $('trip_driver');
+        const userName = drSelect.selectedIndex > 0 ? drSelect.options[drSelect.selectedIndex].text : "Driver";
 
-        fetch(`${API_URL}/locations/`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                name: document.getElementById('new_loc_name').value, 
-                type: document.getElementById('new_loc_type').value, 
-                description: document.getElementById('new_loc_desc').value, 
-                user: userName 
-            })
-        }).then(() => { 
-            document.getElementById('new_loc_name').value = ''; 
-            document.getElementById('new_loc_type').value = ''; 
-            document.getElementById('new_loc_desc').value = '';
-            
-            document.getElementById('locationModal').style.display='none'; 
-            loadData(); 
+        await apiCall('/locations/', 'POST', { 
+            name: $('new_loc_name').value, 
+            type: $('new_loc_type').value, 
+            description: $('new_loc_desc').value, 
+            user: userName 
         });
+        $('new_loc_name').value = ''; $('new_loc_type').value = ''; $('new_loc_desc').value = '';
+        $('locationModal').style.display='none'; 
+        loadData(); 
     }
 
-    document.getElementById('tripForm').addEventListener('submit', e => {
+    $('tripForm').addEventListener('submit', async e => {
         e.preventDefault();
-        fetch(`${API_URL}/trip-logs/`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                driver_id: parseInt(document.getElementById('trip_driver').value),
-                truck_id: parseInt(document.getElementById('trip_truck').value),
-                destination_location_id: parseInt(document.getElementById('trip_location').value),
-                current_trip_end_km: parseFloat(document.getElementById('trip_km').value),
-                end_fuel: parseFloat(document.getElementById('trip_fuel').value),
-                damage_notes: document.getElementById('trip_notes').value
-            })
-        }).then(() => { 
-            alert("Trip logged successfully!"); 
-            document.getElementById('tripForm').reset(); 
-            loadData(); 
+        await apiCall('/trip-logs/', 'POST', {
+            driver_id: parseInt($('trip_driver').value),
+            truck_id: parseInt($('trip_truck').value),
+            destination_location_id: parseInt($('trip_location').value),
+            current_trip_end_km: parseFloat($('trip_km').value),
+            end_fuel: parseFloat($('trip_fuel').value),
+            damage_notes: $('trip_notes').value
         });
+        alert("Trip logged successfully!"); 
+        $('tripForm').reset(); 
+        loadData(); 
     });
 
-    document.getElementById('fuelForm').addEventListener('submit', e => {
+    $('fuelForm').addEventListener('submit', async e => {
         e.preventDefault();
-        fetch(`${API_URL}/fuel-logs/`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                driver_id: parseInt(document.getElementById('fuel_driver').value),
-                truck_id: parseInt(document.getElementById('fuel_truck').value),
-                km_at_fuel_up: parseFloat(document.getElementById('fuel_km').value),
-                receipt_url: document.getElementById('fuel_receipt').value
-            })
-        }).then(() => { 
-            alert("Fuel up logged successfully!"); 
-            document.getElementById('fuelForm').reset(); 
-            loadData(); 
+        await apiCall('/fuel-logs/', 'POST', {
+            driver_id: parseInt($('fuel_driver').value),
+            truck_id: parseInt($('fuel_truck').value),
+            km_at_fuel_up: parseFloat($('fuel_km').value),
+            receipt_url: $('fuel_receipt').value
         });
+        alert("Fuel up logged successfully!"); 
+        $('fuelForm').reset(); 
+        loadData(); 
     });
 
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => { 
-            navigator.serviceWorker.register('/sw.js'); 
-        });
-    }
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 </script>
 </body>
 </html>
