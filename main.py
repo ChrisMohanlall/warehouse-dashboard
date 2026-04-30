@@ -89,7 +89,7 @@ class DBActivityLog(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Seed initial settings if the database was just created/wiped
+# Seed initial settings
 db_init = SessionLocal()
 if not db_init.query(DBSetting).first():
     db_init.add(DBSetting(key="race_name", value="CRS New Event"))
@@ -98,178 +98,96 @@ db_init.close()
 
 # --- HELPER FUNCTIONS ---
 def log_activity(db: Session, user: str, action: str, details: str):
-    new_log = DBActivityLog(user=user, action=action, details=details)
-    db.add(new_log)
+    db.add(DBActivityLog(user=user, action=action, details=details))
     db.commit()
 
 # --- FASTAPI SETUP & SCHEMAS ---
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware, 
-    allow_origins=["*"], 
-    allow_credentials=True, 
-    allow_methods=["*"], 
-    allow_headers=["*"]
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 def get_db():
     db = SessionLocal()
-    try: 
-        yield db
-    finally: 
-        db.close()
+    try: yield db
+    finally: db.close()
 
-class SettingUpdate(BaseModel): 
-    value: str
-
-class DriverCreate(BaseModel): 
-    first_name: str
-    last_initial: str
-    phone: str
-
-class LocationCreate(BaseModel): 
-    name: str
-    type: str
-    description: Optional[str] = ""
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    user: str = "Admin"
-
-class LocationFix(BaseModel): 
-    lat: float
-    lng: float
-
-class TruckCreate(BaseModel): 
-    truck_name: str
-    license_plate: str
-    purpose: str
-    location_id: int
-    start_fuel: float
-    status: str = "Parked"
-    initial_photo_url: str = ""
-    general_notes: str = ""
-    resource_excel_url: str = ""
-
-class TruckUpdate(BaseModel): 
-    license_plate: str
-    purpose: str
-    start_fuel: float
-    status: str
-    general_notes: str = ""
-    resource_excel_url: str = ""
-
-class FuelLogCreate(BaseModel): 
-    truck_id: int
-    driver_id: int
-    km_at_fuel_up: float
-    receipt_url: str
-
-class TripLogCreate(BaseModel): 
-    truck_id: int
-    driver_id: int
-    destination_location_id: int
-    current_trip_end_km: float
-    end_fuel: float
-    damage_notes: str
-    damage_pic_url: str = ""
+class SettingUpdate(BaseModel): value: str
+class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
+class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; user: str = "Admin"
+class LocationFix(BaseModel): lat: float; lng: float
+class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
+class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
+class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
+class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
 # --- API ENDPOINTS ---
 
 @app.get("/")
-def root(): 
-    return {"message": "CRS Warehouse Dashboard API is live!"}
+def root(): return {"message": "CRS Dashboard API is live!"}
 
 @app.get("/keep-awake/")
 def keep_awake(db: Session = Depends(get_db)):
     db.query(DBLocation).first()
-    return {"status": "Render API and Database are both awake!"}
+    return {"status": "Awake"}
 
 @app.get("/config/")
-def get_config(): 
-    return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
+def get_config(): return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
 
-# --- SETTINGS & WIPE ENDPOINTS ---
 @app.get("/settings/{key}")
 def get_setting(key: str, db: Session = Depends(get_db)):
     setting = db.query(DBSetting).filter(DBSetting.key == key).first()
-    if setting:
-        return {"value": setting.value}
-    return {"value": "CRS Event"}
+    return {"value": setting.value if setting else "CRS Event"}
 
 @app.put("/settings/{key}")
 def update_setting(key: str, setting_update: SettingUpdate, db: Session = Depends(get_db)):
     setting = db.query(DBSetting).filter(DBSetting.key == key).first()
-    if not setting:
-        setting = DBSetting(key=key, value=setting_update.value)
-        db.add(setting)
-    else:
-        setting.value = setting_update.value
-        
+    if not setting: db.add(DBSetting(key=key, value=setting_update.value))
+    else: setting.value = setting_update.value
     log_activity(db, "Admin", "Update Settings", f"Changed {key} to {setting_update.value}.")
-    db.commit()
     return {"message": "Setting updated!"}
 
 @app.post("/wipe/")
 def factory_reset():
-    # Danger Zone: Drops all tables and recreates them entirely empty
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    
-    # Re-seed the settings and log the wipe
     new_db = SessionLocal()
     new_db.add(DBSetting(key="race_name", value="CRS New Event"))
     log_activity(new_db, "System", "Factory Reset", "Database was completely wiped.")
-    new_db.commit()
     new_db.close()
-    
     return {"message": "Factory Reset Complete"}
 
-# --- STANDARD ENDPOINTS ---
 @app.get("/drivers/")
-def get_drivers(db: Session = Depends(get_db)): 
-    return db.query(DBDriver).all()
+def get_drivers(db: Session = Depends(get_db)): return db.query(DBDriver).all()
 
 @app.post("/drivers/")
 def create_driver(driver: DriverCreate, db: Session = Depends(get_db)):
     db.add(DBDriver(**driver.model_dump()))
     log_activity(db, "Admin", "Add Driver", f"Added driver: {driver.first_name} {driver.last_initial}.")
-    db.commit()
     return {"message": "Driver added successfully!"}
 
 @app.delete("/drivers/{driver_id}")
 def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     driver = db.query(DBDriver).filter(DBDriver.id == driver_id).first()
     log_activity(db, "Admin", "Remove Driver", f"Removed driver: {driver.first_name} {driver.last_initial}.")
-    db.delete(driver)
-    db.commit()
+    db.delete(driver); db.commit()
     return {"message": "Driver removed."}
 
 @app.get("/locations/")
-def get_locations(db: Session = Depends(get_db)): 
-    return db.query(DBLocation).all()
+def get_locations(db: Session = Depends(get_db)): return db.query(DBLocation).all()
 
 @app.post("/locations/")
 def create_location(loc: LocationCreate, db: Session = Depends(get_db)):
-    loc_data = loc.model_dump(exclude={"user"})
-    db.add(DBLocation(**loc_data))
-    db.commit()
+    db.add(DBLocation(**loc.model_dump(exclude={"user"})))
     log_activity(db, loc.user, "Add Location", f"Added location: {loc.name} - {loc.type}.")
     return {"message": "Location added!"}
 
 @app.put("/locations/{loc_id}")
 def update_location_coords(loc_id: int, coords: LocationFix, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == loc_id).first()
-    loc.lat = coords.lat
-    loc.lng = coords.lng
+    loc.lat = coords.lat; loc.lng = coords.lng
     log_activity(db, "Admin", "Fix Location", f"Set map coordinates for {loc.name} - {loc.type}.")
     
-    # Sync trucks that are parked at this location to the new coordinates
     trucks = db.query(DBTruck).filter(DBTruck.current_location_id == loc.id).all()
-    for t in trucks: 
-        t.lat = coords.lat
-        t.lng = coords.lng
-        
+    for t in trucks: t.lat = coords.lat; t.lng = coords.lng
     db.commit()
     return {"message": "Location coordinates fixed!"}
 
@@ -277,18 +195,20 @@ def update_location_coords(loc_id: int, coords: LocationFix, db: Session = Depen
 def delete_location(loc_id: int, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == loc_id).first()
     log_activity(db, "Admin", "Remove Location", f"Removed location: {loc.name} - {loc.type}.")
-    db.delete(loc)
-    db.commit()
+    db.delete(loc); db.commit()
     return {"message": "Location removed."}
 
 @app.get("/trucks/")
 def get_trucks(db: Session = Depends(get_db)): 
     trucks = db.query(DBTruck).all()
+    
+    # Optimization: Fetch drivers and locations into dictionaries to prevent N+1 DB Queries
+    drivers_dict = {d.id: f"{d.first_name} {d.last_initial}." for d in db.query(DBDriver).all()}
+    locations_dict = {l.id: l for l in db.query(DBLocation).all()}
+
     for t in trucks:
-        driver = db.query(DBDriver).filter(DBDriver.id == t.current_driver_id).first()
-        t.current_driver_name = f"{driver.first_name} {driver.last_initial}." if driver else "Unknown"
-        
-        loc = db.query(DBLocation).filter(DBLocation.id == t.current_location_id).first()
+        t.current_driver_name = drivers_dict.get(t.current_driver_id, "Unknown")
+        loc = locations_dict.get(t.current_location_id)
         t.current_location_name = f"{loc.name} - {loc.type}" if loc else "Unknown"
         t.is_location_undefined = True if (loc and loc.lat is None) else False
     return trucks
@@ -296,76 +216,48 @@ def get_trucks(db: Session = Depends(get_db)):
 @app.post("/trucks/")
 def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == truck.location_id).first()
-    
-    new_truck = DBTruck(
-        truck_name=truck.truck_name, 
-        license_plate=truck.license_plate, 
-        purpose=truck.purpose, 
-        status=truck.status, 
-        lat=loc.lat, 
-        lng=loc.lng, 
-        current_location_id=loc.id, 
-        start_fuel=truck.start_fuel, 
-        initial_photo_url=truck.initial_photo_url, 
-        general_notes=truck.general_notes, 
-        resource_excel_url=truck.resource_excel_url
-    )
-    db.add(new_truck)
-    db.commit()
-    log_activity(db, "Admin", "Intake Truck", f"Added new truck: {truck.truck_name} ({truck.license_plate}).")
+    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url))
+    log_activity(db, "Admin", "Intake Truck", f"Added new truck: {truck.truck_name}.")
     return {"message": "Truck added!"}
 
 @app.put("/trucks/{truck_id}")
 def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends(get_db)):
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
-    truck.license_plate = truck_update.license_plate
-    truck.purpose = truck_update.purpose
-    truck.start_fuel = truck_update.start_fuel
-    truck.status = truck_update.status
-    truck.general_notes = truck_update.general_notes
-    truck.resource_excel_url = truck_update.resource_excel_url
-    
+    truck.license_plate = truck_update.license_plate; truck.purpose = truck_update.purpose
+    truck.start_fuel = truck_update.start_fuel; truck.status = truck_update.status
+    truck.general_notes = truck_update.general_notes; truck.resource_excel_url = truck_update.resource_excel_url
+    log_activity(db, "Admin", "Update Truck", f"Updated truck: {truck.truck_name}.")
     db.commit()
-    log_activity(db, "Admin", "Update Truck", f"Updated truck: {truck.truck_name}. Status: {truck.status}.")
     return {"message": "Truck updated!"}
 
 @app.delete("/trucks/{truck_id}")
 def delete_truck(truck_id: int, db: Session = Depends(get_db)):
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
     log_activity(db, "Admin", "Remove Truck", f"Removed truck: {truck.truck_name}.")
-    db.delete(truck)
-    db.commit()
+    db.delete(truck); db.commit()
     return {"message": "Truck removed."}
 
 @app.post("/trip-logs/")
 def create_trip_log(log: TripLogCreate, db: Session = Depends(get_db)):
     db.add(DBTripLog(**log.model_dump()))
-    
     truck = db.query(DBTruck).filter(DBTruck.id == log.truck_id).first()
     loc = db.query(DBLocation).filter(DBLocation.id == log.destination_location_id).first()
     driver = db.query(DBDriver).filter(DBDriver.id == log.driver_id).first()
     
-    driver_name = f"{driver.first_name} {driver.last_initial}."
-    
-    truck.lat = loc.lat
-    truck.lng = loc.lng
-    truck.current_location_id = loc.id
-    truck.current_driver_id = driver.id
+    truck.lat = loc.lat; truck.lng = loc.lng
+    truck.current_location_id = loc.id; truck.current_driver_id = driver.id
     truck.status = "Parked" 
     
-    log_activity(db, driver_name, "Trip Log", f"Truck {truck.truck_name} parked at {loc.name} - {loc.type}.")
+    log_activity(db, f"{driver.first_name} {driver.last_initial}.", "Trip Log", f"Truck {truck.truck_name} parked at {loc.name} - {loc.type}.")
     db.commit()
     return {"message": "Trip logged!"}
 
 @app.post("/fuel-logs/")
 def create_fuel_log(log: FuelLogCreate, db: Session = Depends(get_db)):
     db.add(DBFuelLog(**log.model_dump()))
-    
     truck = db.query(DBTruck).filter(DBTruck.id == log.truck_id).first()
     driver = db.query(DBDriver).filter(DBDriver.id == log.driver_id).first()
-    driver_name = f"{driver.first_name} {driver.last_initial}."
-    
-    log_activity(db, driver_name, "Fuel Up", f"Fueled up {truck.truck_name} at {log.km_at_fuel_up} KM.")
+    log_activity(db, f"{driver.first_name} {driver.last_initial}.", "Fuel Up", f"Fueled up {truck.truck_name} at {log.km_at_fuel_up} KM.")
     db.commit()
     return {"message": "Fuel log saved!"}
 
