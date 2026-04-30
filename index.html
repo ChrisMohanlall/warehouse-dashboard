@@ -394,8 +394,8 @@
                 loc.markerRef = marker;
                 markers.push(marker);
                 
-                if(trkLoc) trkLoc.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
-                if(remLoc) remLoc.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
+                if(trkLoc) trkLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
+                if(remLoc) remLoc.innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`;
             });
 
             // Need to nest truck fetch here so location data exists for the distance calculation
