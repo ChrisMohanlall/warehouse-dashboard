@@ -332,6 +332,30 @@
     });
 
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+
+    // AUTO-REFRESH: Update the driver map every 30 seconds
+    setInterval(() => {
+        // SAFETY CHECK: Only refresh if the driver isn't actively typing a log or using a modal
+        const isLoggingTrip = $('trip_km') && $('trip_km').value !== "";
+        const isLoggingFuel = $('fuel_km') && $('fuel_km').value !== "";
+        const isModalOpen = ($('driverModal') && $('driverModal').style.display === 'flex') || 
+                            ($('locationModal') && $('locationModal').style.display === 'flex');
+        
+        if (!isLoggingTrip && !isLoggingFuel && !isModalOpen) {
+            
+            // Optional: Save dropdown selections so they don't reset if the driver was just looking at them
+            const currentTripDriver = $('trip_driver').value;
+            const currentTripTruck = $('trip_truck').value;
+            const currentTripLoc = $('trip_location').value;
+
+            // Run the refresh, then re-apply their dropdown choices
+            loadData().then(() => {
+                $('trip_driver').value = currentTripDriver;
+                $('trip_truck').value = currentTripTruck;
+                $('trip_location').value = currentTripLoc;
+            });
+        }
+    }, 30000); // 30000 milliseconds = 30 seconds
 </script>
 </body>
 </html>
