@@ -230,7 +230,11 @@
         // Remove old routes from the driver map if the admin deleted them
         let excessIdx = routes.items.length;
         while (mobileMap && mobileMap.getSource(`route-${excessIdx}`)) {
-            mobileMap.removeLayer(`route-${excessIdx}`);
+            if (mobileMap.getLayer(`route-${excessIdx}-line`)) mobileMap.removeLayer(`route-${excessIdx}-line`);
+            if (mobileMap.getLayer(`route-${excessIdx}-points`)) mobileMap.removeLayer(`route-${excessIdx}-points`);
+            if (mobileMap.getLayer(`route-${excessIdx}-labels`)) mobileMap.removeLayer(`route-${excessIdx}-labels`);
+            if (mobileMap.getLayer(`route-${excessIdx}`)) mobileMap.removeLayer(`route-${excessIdx}`); // Fallback
+            
             mobileMap.removeSource(`route-${excessIdx}`);
             excessIdx++;
         }
@@ -266,14 +270,51 @@
         
         if (!targetMap.getSource(layerId)) {
             targetMap.addSource(layerId, { type: 'geojson', data: url });
+            
+            // 1. Draw the route paths
             targetMap.addLayer({ 
-                id: layerId, 
+                id: `${layerId}-line`, 
                 type: 'line', 
                 source: layerId, 
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                filter: ['==', ['geometry-type'], 'LineString'],
+                layout: { 'line-join': 'round', 'line-cap': 'round' }, 
                 paint: { 'line-color': '#FF5733', 'line-width': 5 } 
             });
+
+            // 2. Draw blue dots for the waypoints
+            targetMap.addLayer({
+                id: `${layerId}-points`,
+                type: 'circle',
+                source: layerId,
+                filter: ['==', ['geometry-type'], 'Point'],
+                paint: {
+                    'circle-radius': 6,
+                    'circle-color': '#007bff',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // 3. Add text labels for the waypoints
+            targetMap.addLayer({
+                id: `${layerId}-labels`,
+                type: 'symbol',
+                source: layerId,
+                filter: ['==', ['geometry-type'], 'Point'],
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-size': 13,
+                    'text-offset': [0, 1], // Push text slightly below the dot
+                    'text-anchor': 'top'
+                },
+                paint: {
+                    'text-color': '#111111',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 2
+                }
+            });
         } else {
+            // Update existing routes in real-time
             targetMap.getSource(layerId).setData(url);
         }
     }
