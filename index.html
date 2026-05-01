@@ -663,6 +663,17 @@
             $('wipe-slider').value = 0; $('wipe-slider').style.display = 'block'; $('btn-wipe').style.display = 'none';
         }
     }
+
+    // AUTO-REFRESH: Update the dashboard every 30 seconds
+    setInterval(() => {
+        // SAFETY CHECK: Only refresh if the admin is NOT actively editing a truck or location
+        const isEditingLoc = $('edit_loc_id') && $('edit_loc_id').value !== "";
+        const isEditingTrk = $('edit_trk_id') && $('edit_trk_id').value !== "";
+        
+        if (!isEditingLoc && !isEditingTrk) {
+            loadData();
+        }
+    }, 30000); // 30000 milliseconds = 30 seconds
 </script>
 </body>
 </html>
