@@ -143,7 +143,11 @@
                     <input type="hidden" id="edit_loc_id" value="">
                     <label>Location Name:</label><input type="text" id="loc_name" required>
                     <label>Sub Location (Type):</label><input type="text" id="loc_type" required>
-                    <label>Pin Icon:</label><select id="loc_icon_select"></select>
+                    <label>Pin Icon:</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <select id="loc_icon_select" onchange="updateIconPreview('loc')" style="flex:1;"></select>
+                        <img id="loc_preview" src="" style="width:32px; height:32px; object-fit:contain; display:none; background:#eee; border-radius:4px; padding:2px;">
+                    </div>
                     
                     <div id="loc_desc_wrapper" style="display:none; background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin-top: 10px;">
                         <b>Driver Notes:</b> <span id="loc_desc_text"></span>
@@ -194,7 +198,11 @@
                     <label>Truck Name:</label><input type="text" id="trk_name" required>
                     <label>License Plate:</label><input type="text" id="trk_plate" required>
                     <label>Purpose:</label><input type="text" id="trk_purpose" required>
-                    <label>Pin Icon:</label><select id="trk_icon_select"></select>
+                    <label>Pin Icon:</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <select id="trk_icon_select" onchange="updateIconPreview('trk')" style="flex:1;"></select>
+                        <img id="trk_preview" src="" style="width:32px; height:32px; object-fit:contain; display:none; background:#eee; border-radius:4px; padding:2px;">
+                    </div>
                     <label>Status:</label>
                     <select id="trk_status">
                         <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
@@ -535,8 +543,10 @@
     function setTrkMode(mode) {
         if(mode === 'add') {
             $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('trk_initial_loc_wrapper').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
+            updateIconPreview('trk');
         } else {
             $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('trk_initial_loc_wrapper').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
+            updateIconPreview('trk');
         }
     }
 
@@ -575,11 +585,23 @@
         await apiCall(`/settings/list/${type}`, 'PUT', { items: type==='icons' ? globalIcons : globalRoutes }); loadData(); 
     }
 
+    function updateIconPreview(type) {
+        const select = $(`${type}_icon_select`);
+        const img = $(`${type}_preview`);
+        if(select.value) {
+            img.src = select.value;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+    }
+    
     function resetLocForm() {
         $('locationForm').reset(); $('edit_loc_id').value = ""; $('loc_desc_wrapper').style.display = 'none';
         if($('loc-manage-selector').style.display === 'block') { $('btn-save-loc').style.display = 'none'; $('btn-update-loc').style.display = 'none'; } 
         else { $('btn-save-loc').style.display = 'block'; $('btn-update-loc').style.display = 'none'; }
         if (adminMarker) adminMarker.remove();
+        updateIconPreview('loc');
     }
 
     async function removeEntity(type, selectId) {
@@ -603,6 +625,7 @@
         $('loc_lat').value = loc.lat; $('loc_lng').value = loc.lng;
         if(loc.lat !== null && loc.lng !== null) { adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 }); setAdminMarker(loc.lat, loc.lng, 'loc_lat', 'loc_lng'); }
         $('btn-save-loc').style.display = 'none'; $('btn-update-loc').style.display = 'block';
+        updateIconPreview('loc');
     }
 
     async function updateLocation() {
@@ -620,6 +643,7 @@
         if(!trk) return;
         $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || ""; $('trk_excel').value = trk.resource_excel_url;
         $('btn-save-trk').style.display = 'none'; $('btn-update-trk').style.display = 'block';
+        updateIconPreview('trk');
     }
 
     async function updateTruck() {
