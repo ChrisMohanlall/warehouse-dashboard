@@ -226,6 +226,14 @@
         trucks.forEach(trk => buildMarker(trk, 'trk', mobileMap));
         
         routes.items.forEach((url, i) => drawRouteOnMap(url, `route-${i}`, mobileMap));
+        
+        // Remove old routes from the driver map if the admin deleted them
+        let excessIdx = routes.items.length;
+        while (mobileMap && mobileMap.getSource(`route-${excessIdx}`)) {
+            mobileMap.removeLayer(`route-${excessIdx}`);
+            mobileMap.removeSource(`route-${excessIdx}`);
+            excessIdx++;
+        }
     }
 
     function buildMarker(entity, type, targetMap) {
@@ -255,9 +263,18 @@
 
     function drawRouteOnMap(url, layerId, targetMap) {
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
+        
         if (!targetMap.getSource(layerId)) {
             targetMap.addSource(layerId, { type: 'geojson', data: url });
-            targetMap.addLayer({ id: layerId, type: 'line', source: layerId, paint: { 'line-color': '#FF5733', 'line-width': 4 }});
+            targetMap.addLayer({ 
+                id: layerId, 
+                type: 'line', 
+                source: layerId, 
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': '#FF5733', 'line-width': 5 } 
+            });
+        } else {
+            targetMap.getSource(layerId).setData(url);
         }
     }
 
