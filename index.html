@@ -76,7 +76,13 @@
     <div id="loading-subtext"></div>
 </div>
 
-<header id="main-banner">Loading Event...</header>
+<header id="main-banner" style="background: #007bff; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
+    <img src="https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true" alt="CRS Logo" style="height: 40px;">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <h1 id="banner-race-name" style="margin: 0; font-size: 1.5rem;">Loading Event...</h1>
+        <img id="banner-race-logo" src="" alt="Race Logo" style="height: 40px; display: none; border-radius: 4px; background: white; padding: 2px;">
+    </div>
+</header>
 
 <nav>
     <button onclick="switchTab('dashboard-view', this)" class="active">Map Dashboard</button>
@@ -248,32 +254,24 @@
             <div class="card">
                 <h2>Event Configuration</h2>
                 <label>Current Race / Event Name:</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="event_name_input">
-                    <button class="btn btn-blue btn-inline" style="margin-top:0;" onclick="saveEventName()">Update</button>
-                </div>
+                <input type="text" id="event_name_input" placeholder="e.g., Montreal Grand Prix">
+                
+                <label>Race Logo URL:</label>
+                <input type="url" id="event_logo_input" placeholder="https://...">
+                
+                <button class="btn btn-blue" onclick="saveRaceDetails()">Update Race Details</button>
 
                 <hr style="margin:20px 0; border:1px solid #eee;">
                 
                 <h3>Icon Library</h3>
-                <label>Add New Icon URL:</label>
+                <label>Icon Name:</label>
+                <input type="text" id="new_icon_name" placeholder="e.g., Red Truck">
+                <label>Icon Image URL:</label>
                 <div style="display:flex; gap:10px;">
                     <input type="url" id="new_icon_url" placeholder="https://...">
                     <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addIcon()">Add</button>
-                </div>
-                <ul id="icon_list" class="list-group" style="margin-top:10px;"></ul>
-
-                <hr style="margin:20px 0; border:1px solid #eee;">
-
-                <h3>Race Routes</h3>
-                <p style="font-size:0.85rem; color:#666;">Provide Google My Maps (.kml/.kmz) or Mapbox GeoJSON links.</p>
-                <label>Add New Route URL:</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="url" id="new_route_url" placeholder="https://...">
-                    <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addRoute()">Add</button>
-                </div>
-                <ul id="route_list" class="list-group" style="margin-top:10px;"></ul>
             </div>
+            <ul id="icon_list" class="list-group" style="margin-top:10px;"></ul>
 
             <div class="card" style="background: #fff3cd; border: 1px solid #ffc107;">
                 <h2 style="color: #856404;">⚠️ DANGER ZONE: Full Reset</h2>
@@ -344,11 +342,33 @@
     async function loadData() {
         markers.forEach(m => m.remove()); markers = [];
 
-        const [settings, drivers, locations, trucks, logs, icons, routes] = await Promise.all([
+        const [settings, drivers, locations, trucks, logs, icons, routes, raceLogo] = await Promise.all([
             apiCall('/settings/race_name'), apiCall('/drivers/'), apiCall('/locations/'), 
             apiCall('/trucks/'), apiCall('/activity-logs/'), 
-            apiCall('/settings/list/icons'), apiCall('/settings/list/routes')
+            apiCall('/settings/list/icons'), apiCall('/settings/list/routes'),
+            apiCall('/settings/race_logo')
         ]);
+
+        // Setup Banner
+        $('banner-race-name').innerText = settings.value; 
+        $('event_name_input').value = settings.value;
+        if(raceLogo.value && raceLogo.value !== 'CRS Event') {
+            $('banner-race-logo').src = raceLogo.value;
+            $('banner-race-logo').style.display = 'block';
+            $('event_logo_input').value = raceLogo.value;
+        }
+
+        // Setup Icons (With backwards compatibility for old string-only icons)
+        globalIcons = icons.items.map(i => typeof i === 'string' ? {name: "Legacy Icon", url: i} : i); 
+        globalRoutes = routes.items;
+
+        ['loc_icon_select', 'trk_icon_select'].forEach(id => {
+            $(id).innerHTML = '<option value="">Default Teardrop</option>';
+            globalIcons.forEach(icon => $(id).innerHTML += `<option value="${icon.url}">${icon.name}</option>`);
+        });
+        
+        $('icon_list').innerHTML = '';
+        globalIcons.forEach((icon, i) => $('icon_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span><img src="${icon.url}" style="width:24px; height:24px; object-fit:contain; vertical-align:middle; margin-right:10px;"> <b>${icon.name}</b></span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('icons', ${i})">X</button></li>`);
 
         $('main-banner').innerText = settings.value; $('event_name_input').value = settings.value;
         globalIcons = icons.items; globalRoutes = routes.items;
@@ -502,7 +522,6 @@
     }
 
     // --- DATA SUBMISSION ---
-    async function addIcon() { globalIcons.push($('new_icon_url').value); await apiCall('/settings/list/icons', 'PUT', { items: globalIcons }); loadData(); $('new_icon_url').value = ''; }
     async function addRoute() { globalRoutes.push($('new_route_url').value); await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes }); loadData(); $('new_route_url').value = ''; }
     async function removeListSetting(type, index) { 
         if(type==='icons') globalIcons.splice(index, 1); else globalRoutes.splice(index, 1);
@@ -561,11 +580,31 @@
         alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
 
-    async function saveEventName() {
+    async function addIcon() { 
+        const name = $('new_icon_name').value;
+        const url = $('new_icon_url').value;
+        if(!name || !url) return alert("Please provide both a name and a URL.");
+        
+        globalIcons.push({name: name, url: url}); 
+        await apiCall('/settings/list/icons', 'PUT', { items: globalIcons }); 
+        loadData(); 
+        $('new_icon_name').value = ''; $('new_icon_url').value = ''; 
+    }
+
+    async function saveRaceDetails() {
         const newName = $('event_name_input').value;
+        const newLogo = $('event_logo_input').value;
         await apiCall('/settings/race_name', 'PUT', { value: newName });
-        $('main-banner').innerText = newName;
-        alert("Banner updated!");
+        await apiCall('/settings/race_logo', 'PUT', { value: newLogo });
+        
+        $('banner-race-name').innerText = newName;
+        if(newLogo) {
+            $('banner-race-logo').src = newLogo;
+            $('banner-race-logo').style.display = 'block';
+        } else {
+            $('banner-race-logo').style.display = 'none';
+        }
+        alert("Race details updated!");
     }
 
     function checkWipeSlider() {
