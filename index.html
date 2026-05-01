@@ -330,7 +330,7 @@
         return res.json();
     }
 
-    let globalTrucks = [], globalLocations = [], globalIcons = [], globalRoutes = [], markers = []; 
+    let globalTrucks = [], globalLocations = [], globalIcons = [], globalRoutes = [], markers = [], routeMarkers = {};
     let map, adminMap, adminMarker;
 
     apiCall('/config/').then(config => {
@@ -420,15 +420,18 @@
             drawRouteOnMap(url, `route-${i}`, map);
         });
 
-        // Delete "ghost" map lines if an admin removes a route from the list
+        // Delete "ghost" map lines and pins if an admin removes a route from the list
         let excessIdx = globalRoutes.length;
         while (map && map.getSource(`route-${excessIdx}`)) {
             if (map.getLayer(`route-${excessIdx}-line`)) map.removeLayer(`route-${excessIdx}-line`);
-            if (map.getLayer(`route-${excessIdx}-points`)) map.removeLayer(`route-${excessIdx}-points`);
-            if (map.getLayer(`route-${excessIdx}-labels`)) map.removeLayer(`route-${excessIdx}-labels`);
-            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); // Fallback for old cache
-            
+            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); // Fallback
             map.removeSource(`route-${excessIdx}`);
+            
+            // Delete the physical waypoint pins
+            if (routeMarkers[`route-${excessIdx}`]) {
+                routeMarkers[`route-${excessIdx}`].forEach(m => m.remove());
+                delete routeMarkers[`route-${excessIdx}`];
+            }
             excessIdx++;
         }
 
@@ -496,57 +499,72 @@
         entity.markerRef = marker; markers.push(marker);
     }
 
-    function drawRouteOnMap(url, layerId, targetMap) {
+    async function drawRouteOnMap(url, layerId, targetMap) {
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
         
-        if (!targetMap.getSource(layerId)) {
-            targetMap.addSource(layerId, { type: 'geojson', data: url });
-            
-            // 1. Draw the route paths
-            targetMap.addLayer({ 
-                id: `${layerId}-line`, 
-                type: 'line', 
-                source: layerId, 
-                filter: ['==', ['geometry-type'], 'LineString'],
-                layout: { 'line-join': 'round', 'line-cap': 'round' }, 
-                paint: { 'line-color': '#FF5733', 'line-width': 5 } 
+        try {
+            // 1. Fetch the GeoJSON data directly
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // 2. Separate paths (lines) and waypoints (points)
+            const lines = { type: 'FeatureCollection', features: data.features.filter(f => f.geometry.type.includes('LineString')) };
+            const points = data.features.filter(f => f.geometry.type === 'Point');
+
+            // 3. Draw the route paths on the canvas
+            if (!targetMap.getSource(layerId)) {
+                targetMap.addSource(layerId, { type: 'geojson', data: lines });
+                targetMap.addLayer({ 
+                    id: `${layerId}-line`, 
+                    type: 'line', 
+                    source: layerId, 
+                    layout: { 'line-join': 'round', 'line-cap': 'round' }, 
+                    paint: { 'line-color': '#FF5733', 'line-width': 5 } 
+                });
+            } else {
+                targetMap.getSource(layerId).setData(lines);
+            }
+
+            // 4. Clear old waypoint markers for this route if they exist
+            if (routeMarkers[layerId]) {
+                routeMarkers[layerId].forEach(m => m.remove());
+            }
+            routeMarkers[layerId] = [];
+
+            // 5. Draw waypoints as interactive Mapbox Pins
+            points.forEach((pt, index) => {
+                const coords = pt.geometry.coordinates;
+                const name = pt.properties.name || `Waypoint ${index + 1}`;
+                const desc = pt.properties.description || '';
+                
+                // Smart color coding to differentiate waypoint types automatically
+                const nameLower = name.toLowerCase();
+                let pinColor = '#8e8e93'; // Default Gray for generic points
+                if(nameLower.includes('start')) pinColor = '#34c759'; // Green
+                else if(nameLower.includes('finish') || nameLower.includes('end')) pinColor = '#ff3b30'; // Red
+                else if(nameLower.includes('water') || nameLower.includes('hydration') || nameLower.includes('aid')) pinColor = '#007bff'; // Blue
+                else if(nameLower.includes('km') || nameLower.includes('mile') || nameLower.includes('marker')) pinColor = '#ffcc00'; // Yellow
+                else if(nameLower.includes('medical') || nameLower.includes('first aid')) pinColor = '#ff3b30'; // Red
+                
+                let popupHtml = `<b>${name}</b>`;
+                if (desc) popupHtml += `<br><span style="font-size:0.85rem;color:#666;">${desc}</span>`;
+                
+                // Add Driver Navigation Link if viewed on the Driver Portal
+                if (window.isDriverApp) {
+                    popupHtml += `<br><a href="https://www.google.com/maps/dir/?api=1&destination=${coords[1]},${coords[0]}" target="_blank" style="display:block; margin-top:10px; padding:8px; background:#007bff; color:white; text-align:center; text-decoration:none; border-radius:4px; font-weight:bold;">🧭 Navigate Here</a>`;
+                }
+
+                // Spawn the pin
+                const marker = new mapboxgl.Marker({ color: pinColor })
+                    .setLngLat([coords[0], coords[1]])
+                    .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
+                    .addTo(targetMap);
+                
+                routeMarkers[layerId].push(marker);
             });
 
-            // 2. Draw blue dots for the waypoints
-            targetMap.addLayer({
-                id: `${layerId}-points`,
-                type: 'circle',
-                source: layerId,
-                filter: ['==', ['geometry-type'], 'Point'],
-                paint: {
-                    'circle-radius': 6,
-                    'circle-color': '#007bff',
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
-
-            // 3. Add text labels for the waypoints
-            targetMap.addLayer({
-                id: `${layerId}-labels`,
-                type: 'symbol',
-                source: layerId,
-                filter: ['==', ['geometry-type'], 'Point'],
-                layout: {
-                    'text-field': ['get', 'name'],
-                    'text-size': 13,
-                    'text-offset': [0, 1], // Push text slightly below the dot
-                    'text-anchor': 'top'
-                },
-                paint: {
-                    'text-color': '#111111',
-                    'text-halo-color': '#ffffff',
-                    'text-halo-width': 2
-                }
-            });
-        } else {
-            // Update existing routes in real-time
-            targetMap.getSource(layerId).setData(url);
+        } catch (err) {
+            console.error("Failed to render interactive route data:", err);
         }
     }
 
