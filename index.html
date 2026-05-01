@@ -293,11 +293,11 @@
                 <hr style="margin:20px 0; border:1px solid #eee;">
 
                 <h3>Race Routes</h3>
-                <p style="font-size:0.85rem; color:#666;">Provide Google My Maps (.kml/.kmz) or Mapbox GeoJSON links.</p>
-                <label>Add New Route URL:</label>
+                <p style="font-size:0.85rem; color:#666;">Upload Mapbox GeoJSON files (.geojson or .json).</p>
+                <label>Upload New Route File:</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="url" id="new_route_url" placeholder="https://...">
-                    <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addRoute()">Add</button>
+                    <input type="file" id="new_route_file" accept=".geojson,.json" style="padding: 5px;">
+                    <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="uploadRoute()">Upload</button>
                 </div>
                 <ul id="route_list" class="list-group" style="margin-top:10px;"></ul>
             </div>
@@ -578,7 +578,43 @@
         alert("Race details updated!");
     }
 
-    async function addRoute() { globalRoutes.push($('new_route_url').value); await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes }); loadData(); $('new_route_url').value = ''; }
+    async function uploadRoute() {
+        const fileInput = $('new_route_file');
+        if (fileInput.files.length === 0) return alert("Please select a file to upload.");
+        
+        // Show loading spinner so the admin knows it's working
+        $('loading-overlay').style.display = 'flex';
+        
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            // 1. Send the file to the new FastAPI upload endpoint
+            const uploadRes = await fetch(`${API_URL}/upload-route/`, {
+                method: "POST",
+                body: formData
+            });
+            if (!uploadRes.ok) throw new Error("Upload failed");
+            
+            // 2. Get the new URL path from the server
+            const data = await uploadRes.json();
+            const absoluteUrl = API_URL + data.url; 
+            
+            // 3. Save that URL to the database route list
+            globalRoutes.push(absoluteUrl);
+            await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes });
+            
+            loadData();
+            fileInput.value = ''; // clear the input box
+            alert("Route uploaded successfully!");
+            $('loading-overlay').style.display = 'none';
+        } catch (err) {
+            console.error(err);
+            alert("Error uploading route. Ensure the server is running.");
+            $('loading-overlay').style.display = 'none';
+        }
+    }
     
     async function removeListSetting(type, index) { 
         if(type==='icons') globalIcons.splice(index, 1); else globalRoutes.splice(index, 1);
