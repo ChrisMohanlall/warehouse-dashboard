@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
-
 load_dotenv()
 
 # --- DATABASE SETUP ---
