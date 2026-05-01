@@ -331,6 +331,13 @@
         map.on('load', () => loadData());
     });
 
+    function setStyle(targetMap, styleName, mapPrefix) {
+        targetMap.setStyle(`mapbox://styles/mapbox/${styleName}`);
+        $(`${mapPrefix}-street-btn`).classList.remove('active');
+        $(`${mapPrefix}-sat-btn`).classList.remove('active');
+        $(styleName.includes('satellite') ? `${mapPrefix}-sat-btn` : `${mapPrefix}-street-btn`).classList.add('active');
+    }
+    
     function switchTab(tabId, btn) {
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
         document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
