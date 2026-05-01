@@ -414,9 +414,19 @@
 
         $('route_list').innerHTML = '';
         globalRoutes.forEach((url, i) => {
-            $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between;"><span>...${url.slice(-30)}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
+            // Show just the clean filename instead of an ugly slice of the URL
+            const fileName = url.split('/').pop();
+            $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span>🗺️ ${fileName}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
             drawRouteOnMap(url, `route-${i}`, map);
         });
+
+        // Delete "ghost" map lines if an admin removes a route from the list
+        let excessIdx = globalRoutes.length;
+        while (map && map.getSource(`route-${excessIdx}`)) {
+            map.removeLayer(`route-${excessIdx}`);
+            map.removeSource(`route-${excessIdx}`);
+            excessIdx++;
+        }
 
         globalLocations = locations; globalTrucks = trucks;
         
@@ -484,9 +494,19 @@
 
     function drawRouteOnMap(url, layerId, targetMap) {
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
+        
         if (!targetMap.getSource(layerId)) {
             targetMap.addSource(layerId, { type: 'geojson', data: url });
-            targetMap.addLayer({ id: layerId, type: 'line', source: layerId, paint: { 'line-color': '#FF5733', 'line-width': 4 }});
+            targetMap.addLayer({ 
+                id: layerId, 
+                type: 'line', 
+                source: layerId, 
+                layout: { 'line-join': 'round', 'line-cap': 'round' }, // Smooths out sharp turns
+                paint: { 'line-color': '#FF5733', 'line-width': 5 } 
+            });
+        } else {
+            // Update existing routes in real-time
+            targetMap.getSource(layerId).setData(url);
         }
     }
 
@@ -588,37 +608,33 @@
         $('loading-overlay').style.display = 'flex';
         let file = fileInput.files[0];
         const ext = file.name.split('.').pop().toLowerCase();
+        
+        // Generate a mathematically unique filename with no spaces to prevent cache bugs
+        const newFileName = `route_${Date.now()}.json`;
 
         try {
-            // MAGIC STEP: If it's KML or KMZ, convert it to GeoJSON before uploading
+            let uploadData = file;
+            
+            // MAGIC STEP: Convert KML/KMZ to GeoJSON
             if (ext === 'kml' || ext === 'kmz') {
                 let kmlText = "";
-                
                 if (ext === 'kmz') {
-                    // Unzip the KMZ archive in the browser memory
                     const zip = await JSZip.loadAsync(file);
-                    // Locate the actual .kml file inside the zip (usually doc.kml)
                     const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'));
                     if (!kmlFile) throw new Error("No KML file found inside the KMZ archive.");
                     kmlText = await kmlFile.async("text");
                 } else {
-                    // Standard KML text read
                     kmlText = await file.text();
                 }
 
-                // Parse the KML data and translate it into a Mapbox-friendly GeoJSON object
                 const kmlDom = new DOMParser().parseFromString(kmlText, "text/xml");
                 const geojsonObj = toGeoJSON.kml(kmlDom);
-
-                // Repackage it into a clean .json File object so the server accepts it normally
-                const newFileName = file.name.replace(/\.(kml|kmz)$/i, '.json');
-                const blob = new Blob([JSON.stringify(geojsonObj)], { type: 'application/json' });
-                file = new File([blob], newFileName, { type: 'application/json' });
+                uploadData = new Blob([JSON.stringify(geojsonObj)], { type: 'application/json' });
             }
 
-            // Standard Upload Process
+            // Standard Upload Process using the safe filename
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", uploadData, newFileName);
 
             const uploadRes = await fetch(`${API_URL}/upload-route/`, {
                 method: "POST",
