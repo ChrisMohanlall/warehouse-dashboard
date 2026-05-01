@@ -205,26 +205,32 @@
                 </form>
             </div>
 
-            <!-- ACTIVITY LOG & REMOVE TOOLS -->
-            <div style="display:flex; flex-direction:column; gap:20px;">
-                <div class="card">
-                    <h2>Remove Assets</h2>
-                    <label>Remove Driver:</label>
-                    <div style="display:flex; gap:10px;"><select id="remove_driver"></select><button class="btn btn-red btn-inline" onclick="removeEntity('drivers', 'remove_driver')">Remove</button></div>
-                    <label>Remove Truck:</label>
-                    <div style="display:flex; gap:10px;"><select id="remove_truck"></select><button class="btn btn-red btn-inline" onclick="removeEntity('trucks', 'remove_truck')">Remove</button></div>
-                    <label>Remove Location:</label>
-                    <div style="display:flex; gap:10px;"><select id="remove_location"></select><button class="btn btn-red btn-inline" onclick="removeEntity('locations', 'remove_location')">Remove</button></div>
+            <!-- REMOVE ASSETS CARD (Full Width) -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>Remove Assets</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <label style="margin-top: 0;">Remove Driver:</label>
+                        <div style="display:flex; gap:10px;"><select id="remove_driver"></select><button class="btn btn-red btn-inline" style="margin:0;" onclick="removeEntity('drivers', 'remove_driver')">Remove</button></div>
+                    </div>
+                    <div style="flex: 1; min-width: 250px;">
+                        <label style="margin-top: 0;">Remove Truck:</label>
+                        <div style="display:flex; gap:10px;"><select id="remove_truck"></select><button class="btn btn-red btn-inline" style="margin:0;" onclick="removeEntity('trucks', 'remove_truck')">Remove</button></div>
+                    </div>
+                    <div style="flex: 1; min-width: 250px;">
+                        <label style="margin-top: 0;">Remove Location:</label>
+                        <div style="display:flex; gap:10px;"><select id="remove_location"></select><button class="btn btn-red btn-inline" style="margin:0;" onclick="removeEntity('locations', 'remove_location')">Remove</button></div>
+                    </div>
                 </div>
+            </div>
 
-                <!-- ACTIVITY LOG CARD (Full Width) -->
-                <div class="card" style="grid-column: 1 / -1;">
-                    <h2>Activity Log</h2>
-                    <table>
-                        <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
-                        <tbody id="activity-table"></tbody>
-                    </table>
-                </div>
+            <!-- ACTIVITY LOG CARD (Full Width) -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>Activity Log</h2>
+                <table>
+                    <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+                    <tbody id="activity-table"></tbody>
+                </table>
             </div>
 
         </div>
