@@ -22,7 +22,6 @@
         nav.bottom-bar button { background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 12px 0; flex: 1; text-align: center; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         nav.bottom-bar button.active { color: var(--primary); }
         nav.bottom-bar button::before { font-size: 20px; }
-        #btn-driver::before { content: "🚚"; } #btn-schedule::before { content: "📅"; } #btn-resources::before { content: "📋"; }
         
         .container { padding: calc(env(safe-area-inset-top, 0px) + 70px) 15px calc(env(safe-area-inset-bottom, 0px) + 90px) 15px; max-width: 600px; margin: 0 auto; }
         .view-section { display: none; animation: fadeIn 0.2s ease-in-out; } 
@@ -62,10 +61,11 @@
 
 <div class="container">
     <div id="map-view" class="view-section">
-        <div class="card" style="padding: 0; overflow: hidden; height: 70vh;">
+        <div class="card" style="padding: 0; overflow: hidden; height: calc(100vh - 180px);">
             <div id="mobile-map" style="width: 100%; height: 100%;"></div>
         </div>
     </div>
+    
     <div id="driver-view" class="view-section">
         <div class="form-grid">
             <div class="card">
@@ -147,11 +147,10 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
-    
-    // UTILITY: Fast DOM selector
+    const defaultLngLat = [-79.347015, 43.651070]; 
+    window.isDriverApp = true; // Set to true to enable "Navigate Here" magic link
     window.$ = id => document.getElementById(id);
     
-    // UTILITY: Centralized API Fetcher
     async function apiCall(endpoint, method = 'GET', body = null) {
         const options = { method, headers: { 'Content-Type': 'application/json' } };
         if (body) options.body = JSON.stringify(body);
@@ -160,33 +159,40 @@
         return res.json();
     }
     
+    let mobileMap;
+    let markers = [];
+
     function switchTab(tabId, btn) {
         document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
         document.querySelectorAll('nav.bottom-bar button').forEach(el => el.classList.remove('active'));
         $(tabId).style.display = 'block';
-        btn.classList.add('active');
+        if(btn) btn.classList.add('active');
+        if(tabId === 'map-view' && typeof mobileMap !== 'undefined') {
+            setTimeout(() => mobileMap.resize(), 100);
+        }
         window.scrollTo(0, 0); 
     }
 
-    // High-Efficiency Async Data Loader
     async function loadData() {
         $('loading-overlay').style.display = 'none';
 
-        const [drivers, locations, trucks, raceSettings] = await Promise.all([
+        // Load config and mapbox once
+        if(!mobileMap) {
+            const config = await apiCall('/config/');
+            mapboxgl.accessToken = config.mapbox_token;
+            mobileMap = new mapboxgl.Map({ container: 'mobile-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 11 });
+            mobileMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+        }
+
+        const [drivers, locations, trucks, raceSettings, routes] = await Promise.all([
             apiCall('/drivers/'),
             apiCall('/locations/'),
             apiCall('/trucks/'),
-            apiCall('/settings/race_name')
+            apiCall('/settings/race_name'),
+            apiCall('/settings/list/routes')
         ]);
             
         $('mobile-banner').innerText = raceSettings.value;
-
-        //Populate Map and Icons
-        let mobileMap;
-        apiCall('/config/').then(config => {
-            mapboxgl.accessToken = config.mapbox_token;
-            mobileMap = new mapboxgl.Map({ container: 'mobile-map', style: 'mapbox://styles/mapbox/streets-v12', center: [-79.347, 43.651], zoom: 11 });
-        });
 
         // Populate Drivers
         ['trip_driver', 'fuel_driver', 'new_loc_driver'].forEach(id => { 
@@ -206,20 +212,57 @@
             ['trip_truck', 'fuel_truck'].forEach(id => { $(id).innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
             if(t.resource_excel_url) $('resource-buttons').innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`; 
         });
+
+        // Map updates
+        markers.forEach(m => m.remove()); markers = [];
+        
+        locations.forEach(loc => buildMarker(loc, 'loc', mobileMap));
+        trucks.forEach(trk => buildMarker(trk, 'trk', mobileMap));
+        
+        routes.items.forEach((url, i) => drawRouteOnMap(url, `route-${i}`, mobileMap));
+    }
+
+    function buildMarker(entity, type, targetMap) {
+        if (entity.lat === null) return;
+        let el = document.createElement('div');
+        if (entity.icon_url) {
+            el.style.width = '32px'; el.style.height = '32px';
+            el.style.backgroundImage = `url('${entity.icon_url}')`;
+            el.style.backgroundSize = 'contain';
+            el.style.backgroundRepeat = 'no-repeat';
+            el.style.backgroundPosition = 'center';
+            el.style.cursor = 'pointer';
+        } else {
+            el = null; 
+        }
+        
+        let html = type === 'loc' ? `<b>${entity.name}</b><br>${entity.type}` : `<b>${entity.truck_name}</b><br>Status: ${entity.status}<br>Driver: ${entity.current_driver_name}`;
+        
+        // This attaches the Native "Navigate Here" GPS Link
+        if (window.isDriverApp) {
+            html += `<br><a href="https://www.google.com/maps/dir/?api=1&destination=${entity.lat},${entity.lng}" target="_blank" style="display:block; margin-top:10px; padding:8px; background:#007bff; color:white; text-align:center; text-decoration:none; border-radius:4px; font-weight:bold;">🧭 Navigate Here</a>`;
+        }
+
+        const marker = el ? new mapboxgl.Marker(el) : new mapboxgl.Marker();
+        marker.setLngLat([entity.lng, entity.lat]).setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(html)).addTo(targetMap);
+        entity.markerRef = marker; markers.push(marker);
+    }
+
+    function drawRouteOnMap(url, layerId, targetMap) {
+        if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
+        if (!targetMap.getSource(layerId)) {
+            targetMap.addSource(layerId, { type: 'geojson', data: url });
+            targetMap.addLayer({ id: layerId, type: 'line', source: layerId, paint: { 'line-color': '#FF5733', 'line-width': 4 }});
+        }
     }
 
     loadData();
 
     function checkDropdowns() {
-        // If a driver selects "Add New" in ANY of the three driver dropdowns
         if($('trip_driver').value === "NEW" || $('fuel_driver').value === "NEW" || $('new_loc_driver').value === "NEW") {
-            $('locationModal').style.display = 'none'; // Close location modal safely if it was open
+            $('locationModal').style.display = 'none'; 
             $('driverModal').style.display = 'flex';
-            
-            // Reset the dropdowns
-            $('trip_driver').value = ""; 
-            $('fuel_driver').value = ""; 
-            $('new_loc_driver').value = "";
+            $('trip_driver').value = ""; $('fuel_driver').value = ""; $('new_loc_driver').value = "";
         }
         if($('trip_location').value === "NEW") {
             $('locationModal').style.display = 'flex';
@@ -227,7 +270,6 @@
         }
     }
 
-    // Refactored POST handlers
     async function saveDriver() {
         await apiCall('/drivers/', 'POST', { 
             first_name: $('new_dr_first').value, 
@@ -241,15 +283,9 @@
 
     async function saveLocation() {
         const drSelect = $('new_loc_driver');
-        
-        // Ensure they actually picked their name!
-        if (drSelect.selectedIndex <= 0 || !drSelect.value) {
-            alert("Please select your name from the Driver dropdown first.");
-            return;
-        }
+        if (drSelect.selectedIndex <= 0 || !drSelect.value) { alert("Please select your name from the Driver dropdown first."); return; }
         
         const userName = drSelect.options[drSelect.selectedIndex].text;
-
         await apiCall('/locations/', 'POST', { 
             name: $('new_loc_name').value, 
             type: $('new_loc_type').value, 
@@ -257,11 +293,7 @@
             user: userName 
         });
         
-        $('new_loc_name').value = ''; 
-        $('new_loc_type').value = ''; 
-        $('new_loc_desc').value = ''; 
-        $('new_loc_driver').value = '';
-        
+        $('new_loc_name').value = ''; $('new_loc_type').value = ''; $('new_loc_desc').value = ''; $('new_loc_driver').value = '';
         $('locationModal').style.display='none'; 
         loadData(); 
     }
