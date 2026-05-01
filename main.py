@@ -96,8 +96,16 @@ Base.metadata.create_all(bind=engine)
 db_init = SessionLocal()
 if not db_init.query(DBSetting).first():
     db_init.add(DBSetting(key="race_name", value="CRS New Event"))
+    db_init.add(DBSetting(key="icons", value=json.dumps(DEFAULT_ICONS)))
     db_init.commit()
 db_init.close()
+
+# --- DEFAULT SETTINGS ---
+# Paste your permanent icon URLs here! You can add as many as you want.
+DEFAULT_ICONS = [
+    {"name": "Standard Teardrop", "url": ""},
+    {"name": "CRS Banner Placeholder", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true"}
+]
 
 # --- HELPER FUNCTIONS ---
 def log_activity(db: Session, user: str, action: str, details: str):
@@ -174,6 +182,7 @@ def factory_reset():
     Base.metadata.create_all(bind=engine)
     new_db = SessionLocal()
     new_db.add(DBSetting(key="race_name", value="CRS New Event"))
+    new_db.add(DBSetting(key="icons", value=json.dumps(DEFAULT_ICONS)))
     log_activity(new_db, "System", "Factory Reset", "Database was completely wiped.")
     new_db.commit()
     new_db.close()
