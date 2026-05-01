@@ -156,6 +156,10 @@
                     </div>
 
                     <div id="admin-map-wrapper">
+                        <div class="map-style-toggle">
+                            <button id="admin-street-btn" class="active" onclick="setStyle(adminMap, 'streets-v12', 'admin')">Street</button>
+                            <button id="admin-sat-btn" onclick="setStyle(adminMap, 'satellite-streets-v12', 'admin')">Satellite</button>
+                        </div>
                         <div id="admin-map"></div>
                     </div>
                     <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">Click the map directly to drop a pin.</div>
