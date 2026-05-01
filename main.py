@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,6 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
-import json
 
 load_dotenv()
 
@@ -30,13 +30,13 @@ class DBSetting(Base):
 
 class DBLocation(Base):
     __tablename__ = "locations"
-    icon_url = Column(String, nullable=True)
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     type = Column(String)
     description = Column(Text, nullable=True) 
     lat = Column(Float, nullable=True) 
     lng = Column(Float, nullable=True)
+    icon_url = Column(String, nullable=True)
 
 class DBDriver(Base):
     __tablename__ = "drivers"
@@ -47,7 +47,6 @@ class DBDriver(Base):
 
 class DBTruck(Base):
     __tablename__ = "trucks"
-    icon_url = Column(String, nullable=True)
     id = Column(Integer, primary_key=True, index=True)
     truck_name = Column(String, unique=True, index=True)
     license_plate = Column(String)
@@ -61,6 +60,7 @@ class DBTruck(Base):
     general_notes = Column(Text, nullable=True)
     resource_excel_url = Column(String, nullable=True)
     start_fuel = Column(Float) 
+    icon_url = Column(String, nullable=True)
 
 class DBTripLog(Base):
     __tablename__ = "trip_logs"
@@ -92,7 +92,7 @@ class DBActivityLog(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Seed initial settings
+# Seed initial settings if blank
 db_init = SessionLocal()
 if not db_init.query(DBSetting).first():
     db_init.add(DBSetting(key="race_name", value="CRS New Event"))
@@ -116,10 +116,10 @@ def get_db():
 class SettingUpdate(BaseModel): value: str
 class SettingListUpdate(BaseModel): items: List[str]
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
-class LocationCreate(BaseModel): icon_url: Optional[str] = ""; name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; user: str = "Admin"
-class LocationUpdate(BaseModel): icon_url: Optional[str] = ""; name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None
-class TruckCreate(BaseModel): icon_url: Optional[str] = ""; truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""
-class TruckUpdate(BaseModel): icon_url: Optional[str] = ""; license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""
+class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
+class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
+class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
+class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
@@ -147,26 +147,23 @@ def update_setting(key: str, setting_update: SettingUpdate, db: Session = Depend
     if not setting: db.add(DBSetting(key=key, value=setting_update.value))
     else: setting.value = setting_update.value
     log_activity(db, "Admin", "Update Settings", f"Changed {key} to {setting_update.value}.")
+    db.commit()
     return {"message": "Setting updated!"}
 
 @app.get("/settings/list/{key}")
 def get_setting_list(key: str, db: Session = Depends(get_db)):
     setting = db.query(DBSetting).filter(DBSetting.key == key).first()
     if setting and setting.value:
-        try:
-            return {"items": json.loads(setting.value)}
-        except json.JSONDecodeError:
-            return {"items": []}
+        try: return {"items": json.loads(setting.value)}
+        except json.JSONDecodeError: return {"items": []}
     return {"items": []}
 
 @app.put("/settings/list/{key}")
 def update_setting_list(key: str, list_update: SettingListUpdate, db: Session = Depends(get_db)):
     setting = db.query(DBSetting).filter(DBSetting.key == key).first()
     json_val = json.dumps(list_update.items)
-    if not setting:
-        db.add(DBSetting(key=key, value=json_val))
-    else:
-        setting.value = json_val
+    if not setting: db.add(DBSetting(key=key, value=json_val))
+    else: setting.value = json_val
     log_activity(db, "Admin", "Update Settings", f"Updated list for {key}.")
     db.commit()
     return {"message": "List updated!"}
@@ -178,6 +175,7 @@ def factory_reset():
     new_db = SessionLocal()
     new_db.add(DBSetting(key="race_name", value="CRS New Event"))
     log_activity(new_db, "System", "Factory Reset", "Database was completely wiped.")
+    new_db.commit()
     new_db.close()
     return {"message": "Factory Reset Complete"}
 
@@ -188,6 +186,7 @@ def get_drivers(db: Session = Depends(get_db)): return db.query(DBDriver).all()
 def create_driver(driver: DriverCreate, db: Session = Depends(get_db)):
     db.add(DBDriver(**driver.model_dump()))
     log_activity(db, "Admin", "Add Driver", f"Added driver: {driver.first_name} {driver.last_initial}.")
+    db.commit()
     return {"message": "Driver added successfully!"}
 
 @app.delete("/drivers/{driver_id}")
@@ -204,6 +203,7 @@ def get_locations(db: Session = Depends(get_db)): return db.query(DBLocation).al
 def create_location(loc: LocationCreate, db: Session = Depends(get_db)):
     db.add(DBLocation(**loc.model_dump(exclude={"user"})))
     log_activity(db, loc.user, "Add Location", f"Added location: {loc.name} - {loc.type}.")
+    db.commit()
     return {"message": "Location added!"}
 
 @app.put("/locations/{loc_id}")
@@ -213,9 +213,9 @@ def update_location(loc_id: int, update_data: LocationUpdate, db: Session = Depe
     loc.type = update_data.type
     loc.lat = update_data.lat
     loc.lng = update_data.lng
+    loc.icon_url = update_data.icon_url
     log_activity(db, "Admin", "Edit Location", f"Updated location: {loc.name} - {loc.type}.")
     
-    # Sync trucks parked at this location to the new coordinates (if any)
     if update_data.lat is not None and update_data.lng is not None:
         trucks = db.query(DBTruck).filter(DBTruck.current_location_id == loc.id).all()
         for t in trucks: 
@@ -235,8 +235,6 @@ def delete_location(loc_id: int, db: Session = Depends(get_db)):
 @app.get("/trucks/")
 def get_trucks(db: Session = Depends(get_db)): 
     trucks = db.query(DBTruck).all()
-    
-    # Optimization: Fetch drivers and locations into dictionaries to prevent N+1 DB Queries
     drivers_dict = {d.id: f"{d.first_name} {d.last_initial}." for d in db.query(DBDriver).all()}
     locations_dict = {l.id: l for l in db.query(DBLocation).all()}
 
@@ -250,16 +248,21 @@ def get_trucks(db: Session = Depends(get_db)):
 @app.post("/trucks/")
 def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == truck.location_id).first()
-    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url))
+    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url, icon_url=truck.icon_url))
     log_activity(db, "Admin", "Intake Truck", f"Added new truck: {truck.truck_name}.")
+    db.commit()
     return {"message": "Truck added!"}
 
 @app.put("/trucks/{truck_id}")
 def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends(get_db)):
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
-    truck.license_plate = truck_update.license_plate; truck.purpose = truck_update.purpose
-    truck.start_fuel = truck_update.start_fuel; truck.status = truck_update.status
-    truck.general_notes = truck_update.general_notes; truck.resource_excel_url = truck_update.resource_excel_url
+    truck.license_plate = truck_update.license_plate
+    truck.purpose = truck_update.purpose
+    truck.start_fuel = truck_update.start_fuel
+    truck.status = truck_update.status
+    truck.general_notes = truck_update.general_notes
+    truck.resource_excel_url = truck_update.resource_excel_url
+    truck.icon_url = truck_update.icon_url
     log_activity(db, "Admin", "Update Truck", f"Updated truck: {truck.truck_name}.")
     db.commit()
     return {"message": "Truck updated!"}
