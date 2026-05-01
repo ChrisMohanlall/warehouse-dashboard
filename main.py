@@ -94,8 +94,34 @@ Base.metadata.create_all(bind=engine)
 # --- DEFAULT SETTINGS ---
 # Paste your permanent icon URLs here! You can add as many as you want.
 DEFAULT_ICONS = [
-    {"name": "Standard Teardrop", "url": ""},
+    {"name": "Standard Teardrop", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/teardrop.png?raw=true"},
     {"name": "CRS Banner Placeholder", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true"}
+    {"name": "Truck A", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_A.png?raw=true"}
+    {"name": "Truck B", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_B.png?raw=true"}
+    {"name": "Truck C", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_C.png?raw=true"}
+    {"name": "Truck D", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_D.png?raw=true"}
+    {"name": "Truck E", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_E.png?raw=true"}
+    {"name": "Truck F", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_F.png?raw=true"}
+    {"name": "Truck G", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_G.png?raw=true"}
+    {"name": "Truck H", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_H.png?raw=true"}
+    {"name": "Truck I", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_I.png?raw=true"}
+    {"name": "Truck J", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_J.png?raw=true"}
+    {"name": "Truck K", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_K.png?raw=true"}
+    {"name": "Truck L", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_L.png?raw=true"}
+    {"name": "Truck M", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_M.png?raw=true"}
+    {"name": "Truck N", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_N.png?raw=true"}
+    {"name": "Truck O", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_O.png?raw=true"}
+    {"name": "Truck P", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_P.png?raw=true"}
+    {"name": "Truck Q", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Q.png?raw=true"}
+    {"name": "Truck R", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_R.png?raw=true"}
+    {"name": "Truck S", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_S.png?raw=true"}
+    {"name": "Truck T", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_T.png?raw=true"}
+    {"name": "Truck U", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_U.png?raw=true"}
+    {"name": "Truck V", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_V.png?raw=true"}
+    {"name": "Truck W", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_W.png?raw=true"}
+    {"name": "Truck X", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_X.png?raw=true"}
+    {"name": "Truck Y", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Y.png?raw=true"}
+    {"name": "Truck Z", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Z.png?raw=true"}
 ]
 
 # Seed initial settings if blank
