@@ -258,7 +258,7 @@
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     const defaultLngLat = [-79.347015, 43.651070]; 
-    const $ = id => document.getElementById(id);
+    window.$ = id => document.getElementById(id);
     
     async function apiCall(endpoint, method = 'GET', body = null) {
         const options = { method, headers: { 'Content-Type': 'application/json' } };
