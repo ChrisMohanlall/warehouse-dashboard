@@ -1,14 +1,21 @@
 import os
 import json
+import shutil
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Text, DateTime
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
+
 load_dotenv()
+
+# Ensure the upload directory exists for route files
+os.makedirs("uploads/routes", exist_ok=True)
+
 
 # --- DATABASE SETUP ---
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fleet.db") 
@@ -141,6 +148,9 @@ def log_activity(db: Session, user: str, action: str, details: str):
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+# Mount the static directory so uploaded files have a public URL
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 def get_db():
     db = SessionLocal()
     try: yield db
@@ -168,6 +178,16 @@ def keep_awake(db: Session = Depends(get_db)):
 
 @app.get("/config/")
 def get_config(): return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
+
+@app.post("/upload-route/")
+def upload_route(file: UploadFile = File(...)):
+    # Save the uploaded file to the local disk
+    file_location = f"uploads/routes/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(file.file, file_object)
+    
+    # Return the new URL path so the frontend can save it to the database
+    return {"url": f"/uploads/routes/{file.filename}"}
 
 @app.get("/settings/{key}")
 def get_setting(key: str, db: Session = Depends(get_db)):
