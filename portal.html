@@ -57,7 +57,13 @@
     <div id="loading-subtext"></div>
 </div>
 
-<header id="mobile-banner">Loading Event...</header>
+<header id="mobile-banner" style="background: var(--primary); color: white; padding: calc(env(safe-area-inset-top, 0px) + 10px) 15px 10px 15px; display: flex; justify-content: space-between; align-items: center; position: fixed; top: 0; width: 100%; z-index: 100; box-sizing: border-box;">
+    <img src="https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true" alt="CRS" style="height: 28px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span id="banner-race-name" style="font-weight: bold; font-size: 16px;">Loading Event...</span>
+        <img id="banner-race-logo" src="" alt="Race Logo" style="height: 28px; display: none; border-radius: 4px; background: white; padding: 2px;">
+    </div>
+</header>
 
 <div class="container">
     <div id="map-view" class="view-section">
@@ -184,13 +190,20 @@
             mobileMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
         }
 
-        const [drivers, locations, trucks, raceSettings, routes] = await Promise.all([
+        const [drivers, locations, trucks, raceSettings, routes, raceLogo] = await Promise.all([
             apiCall('/drivers/'),
             apiCall('/locations/'),
             apiCall('/trucks/'),
             apiCall('/settings/race_name'),
-            apiCall('/settings/list/routes')
+            apiCall('/settings/list/routes'),
+            apiCall('/settings/race_logo')
         ]);
+            
+        $('banner-race-name').innerText = raceSettings.value;
+        if(raceLogo.value && raceLogo.value !== 'CRS Event') {
+            $('banner-race-logo').src = raceLogo.value;
+            $('banner-race-logo').style.display = 'block';
+        }
             
         $('mobile-banner').innerText = raceSettings.value;
 
