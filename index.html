@@ -293,10 +293,11 @@
                 <hr style="margin:20px 0; border:1px solid #eee;">
 
                 <h3>Race Routes</h3>
-                <p style="font-size:0.85rem; color:#666;">Upload Mapbox GeoJSON files (.geojson or .json).</p>
+                <p style="font-size:0.85rem; color:#666;">Upload Mapbox GeoJSON or Google Earth KML/KMZ files.</p>
                 <label>Upload New Route File:</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="file" id="new_route_file" accept=".geojson,.json" style="padding: 5px;">
+                    <!-- Updated to accept kml and kmz -->
+                    <input type="file" id="new_route_file" accept=".geojson,.json,.kml,.kmz" style="padding: 5px;">
                     <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="uploadRoute()">Upload</button>
                 </div>
                 <ul id="route_list" class="list-group" style="margin-top:10px;"></ul>
@@ -312,6 +313,8 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
@@ -582,36 +585,61 @@
         const fileInput = $('new_route_file');
         if (fileInput.files.length === 0) return alert("Please select a file to upload.");
         
-        // Show loading spinner so the admin knows it's working
         $('loading-overlay').style.display = 'flex';
-        
-        const file = fileInput.files[0];
-        const formData = new FormData();
-        formData.append("file", file);
+        let file = fileInput.files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
 
         try {
-            // 1. Send the file to the new FastAPI upload endpoint
+            // MAGIC STEP: If it's KML or KMZ, convert it to GeoJSON before uploading
+            if (ext === 'kml' || ext === 'kmz') {
+                let kmlText = "";
+                
+                if (ext === 'kmz') {
+                    // Unzip the KMZ archive in the browser memory
+                    const zip = await JSZip.loadAsync(file);
+                    // Locate the actual .kml file inside the zip (usually doc.kml)
+                    const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'));
+                    if (!kmlFile) throw new Error("No KML file found inside the KMZ archive.");
+                    kmlText = await kmlFile.async("text");
+                } else {
+                    // Standard KML text read
+                    kmlText = await file.text();
+                }
+
+                // Parse the KML data and translate it into a Mapbox-friendly GeoJSON object
+                const kmlDom = new DOMParser().parseFromString(kmlText, "text/xml");
+                const geojsonObj = toGeoJSON.kml(kmlDom);
+
+                // Repackage it into a clean .json File object so the server accepts it normally
+                const newFileName = file.name.replace(/\.(kml|kmz)$/i, '.json');
+                const blob = new Blob([JSON.stringify(geojsonObj)], { type: 'application/json' });
+                file = new File([blob], newFileName, { type: 'application/json' });
+            }
+
+            // Standard Upload Process
+            const formData = new FormData();
+            formData.append("file", file);
+
             const uploadRes = await fetch(`${API_URL}/upload-route/`, {
                 method: "POST",
                 body: formData
             });
-            if (!uploadRes.ok) throw new Error("Upload failed");
+            if (!uploadRes.ok) throw new Error("Upload failed. Ensure backend is running.");
             
-            // 2. Get the new URL path from the server
             const data = await uploadRes.json();
             const absoluteUrl = API_URL + data.url; 
             
-            // 3. Save that URL to the database route list
             globalRoutes.push(absoluteUrl);
             await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes });
             
             loadData();
-            fileInput.value = ''; // clear the input box
-            alert("Route uploaded successfully!");
-            $('loading-overlay').style.display = 'none';
+            fileInput.value = ''; 
+            alert("Route processed and uploaded successfully!");
+            
         } catch (err) {
             console.error(err);
-            alert("Error uploading route. Ensure the server is running.");
+            alert("Error processing route: " + err.message);
+        } finally {
             $('loading-overlay').style.display = 'none';
         }
     }
