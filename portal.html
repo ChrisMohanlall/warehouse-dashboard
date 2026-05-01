@@ -16,8 +16,6 @@
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; user-select: none; overscroll-behavior-y: none; }
         input, select, textarea { user-select: auto; }
         
-        header { background: var(--primary); color: white; text-align: center; font-weight: bold; font-size: 18px; position: fixed; top: 0; width: 100%; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: calc(env(safe-area-inset-top, 0px) + 15px) 0 15px 0; }
-        
         nav.bottom-bar { position: fixed; bottom: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0px); }
         nav.bottom-bar button { background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 12px 0; flex: 1; text-align: center; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         nav.bottom-bar button.active { color: var(--primary); }
@@ -154,7 +152,7 @@
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     const defaultLngLat = [-79.347015, 43.651070]; 
-    window.isDriverApp = true; // Set to true to enable "Navigate Here" magic link
+    window.isDriverApp = true; 
     window.$ = id => document.getElementById(id);
     
     async function apiCall(endpoint, method = 'GET', body = null) {
@@ -182,7 +180,6 @@
     async function loadData() {
         $('loading-overlay').style.display = 'none';
 
-        // Load config and mapbox once
         if(!mobileMap) {
             const config = await apiCall('/config/');
             mapboxgl.accessToken = config.mapbox_token;
@@ -203,21 +200,18 @@
         if(raceLogo.value && raceLogo.value !== 'CRS Event') {
             $('banner-race-logo').src = raceLogo.value;
             $('banner-race-logo').style.display = 'block';
+        } else {
+            $('banner-race-logo').style.display = 'none';
         }
-            
-        $('mobile-banner').innerText = raceSettings.value;
 
-        // Populate Drivers
         ['trip_driver', 'fuel_driver', 'new_loc_driver'].forEach(id => { 
             $(id).innerHTML = '<option value="">Select driver...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Add New Driver...</option>'; 
             drivers.forEach(d => { $(id).innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; }); 
         });
 
-        // Populate Locations
         $('trip_location').innerHTML = '<option value="">Select parked location...</option><option value="NEW" style="font-weight:bold; color:#007bff;">+ Location Missing? Add it...</option>'; 
         locations.forEach(loc => { $('trip_location').innerHTML += `<option value="${loc.id}">${loc.name} - ${loc.type}</option>`; }); 
 
-        // Populate Trucks & Resources
         ['trip_truck', 'fuel_truck'].forEach(id => { $(id).innerHTML = '<option value="">Select truck...</option>'; });
         $('resource-buttons').innerHTML = '';
         
@@ -226,7 +220,6 @@
             if(t.resource_excel_url) $('resource-buttons').innerHTML += `<button class="btn btn-blue" style="margin-top: 0;" onclick="window.open('${t.resource_excel_url}', '_blank')">${t.truck_name} Inventory</button>`; 
         });
 
-        // Map updates
         markers.forEach(m => m.remove()); markers = [];
         
         locations.forEach(loc => buildMarker(loc, 'loc', mobileMap));
@@ -251,7 +244,6 @@
         
         let html = type === 'loc' ? `<b>${entity.name}</b><br>${entity.type}` : `<b>${entity.truck_name}</b><br>Status: ${entity.status}<br>Driver: ${entity.current_driver_name}`;
         
-        // This attaches the Native "Navigate Here" GPS Link
         if (window.isDriverApp) {
             html += `<br><a href="https://www.google.com/maps/dir/?api=1&destination=${entity.lat},${entity.lng}" target="_blank" style="display:block; margin-top:10px; padding:8px; background:#007bff; color:white; text-align:center; text-decoration:none; border-radius:4px; font-weight:bold;">🧭 Navigate Here</a>`;
         }
