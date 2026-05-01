@@ -149,7 +149,7 @@
     const API_URL = "https://crsdashboard.onrender.com";
     
     // UTILITY: Fast DOM selector
-    const $ = id => document.getElementById(id);
+    window.$ = id => document.getElementById(id);
     
     // UTILITY: Centralized API Fetcher
     async function apiCall(endpoint, method = 'GET', body = null) {
