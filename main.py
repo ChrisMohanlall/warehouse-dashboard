@@ -114,7 +114,7 @@ def get_db():
     finally: db.close()
 
 class SettingUpdate(BaseModel): value: str
-class SettingListUpdate(BaseModel): items: List[str]
+class SettingListUpdate(BaseModel): items: list
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
 class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
