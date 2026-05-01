@@ -95,7 +95,7 @@ Base.metadata.create_all(bind=engine)
 # Paste your permanent icon URLs here! You can add as many as you want.
 DEFAULT_ICONS = [
     {"name": "Standard Teardrop", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/teardrop.png?raw=true"},
-    {"name": "CRS Banner Placeholder", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true"},
+    {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crsbanner.png?raw=true"},
     {"name": "Truck A", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_A.svg?raw=true"},
     {"name": "Truck B", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_B.svg?raw=true"},
     {"name": "Truck C", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_C.svg?raw=true"},
