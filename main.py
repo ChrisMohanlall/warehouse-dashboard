@@ -69,6 +69,7 @@ class DBTruck(Base):
     resource_excel_url = Column(String, nullable=True)
     start_fuel = Column(Float) 
     icon_url = Column(String, nullable=True)
+    resource_state = Column(Text, nullable=True, default="{}")
 
 class DBTripLog(Base):
     __tablename__ = "trip_logs"
@@ -161,8 +162,8 @@ class SettingListUpdate(BaseModel): items: list
 class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
 class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
-class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
-class TruckUpdate(BaseModel): truck_name: str; license_plate: str; purpose: str; start_fuel: float; status: str; location_id: int; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
+class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""; resource_state: str = "{}"
+class TruckUpdate(BaseModel): truck_name: str; license_plate: str; purpose: str; start_fuel: float; status: str; location_id: int; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""; resource_state: str = "{}"
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
@@ -314,7 +315,7 @@ def get_trucks(db: Session = Depends(get_db)):
 @app.post("/trucks/")
 def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
     loc = db.query(DBLocation).filter(DBLocation.id == truck.location_id).first()
-    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url, icon_url=truck.icon_url))
+    db.add(DBTruck(truck_name=truck.truck_name, license_plate=truck.license_plate, purpose=truck.purpose, status=truck.status, lat=loc.lat, lng=loc.lng, current_location_id=loc.id, start_fuel=truck.start_fuel, initial_photo_url=truck.initial_photo_url, general_notes=truck.general_notes, resource_excel_url=truck.resource_excel_url, icon_url=truck.icon_url, resource_state=truck.resource_state))
     log_activity(db, "Admin", "Intake Truck", f"Added new truck: {truck.truck_name}.")
     db.commit()
     return {"message": "Truck added!"}
@@ -331,6 +332,7 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
     truck.general_notes = truck_update.general_notes
     truck.resource_excel_url = truck_update.resource_excel_url
     truck.icon_url = truck_update.icon_url
+    truck.resource_state = truck_update.resource_state
 
     loc = db.query(DBLocation).filter(DBLocation.id == truck_update.location_id).first()
     if loc:
