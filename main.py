@@ -16,7 +16,6 @@ load_dotenv()
 # Ensure the upload directory exists for route files
 os.makedirs("uploads/routes", exist_ok=True)
 
-
 # --- DATABASE SETUP ---
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fleet.db") 
 
@@ -99,7 +98,6 @@ class DBActivityLog(Base):
 Base.metadata.create_all(bind=engine)
 
 # --- DEFAULT SETTINGS ---
-# Paste your permanent icon URLs here! You can add as many as you want.
 DEFAULT_ICONS = [
     {"name": "Standard Teardrop", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/teardrop.png?raw=true"},
     {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crslogo.png?raw=true"},
