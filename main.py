@@ -16,6 +16,7 @@ load_dotenv()
 # Ensure the upload directories exist
 os.makedirs("uploads/routes", exist_ok=True)
 os.makedirs("uploads/schedules", exist_ok=True)
+os.makedirs("uploads/resources", exist_ok=True)
 
 
 # --- DATABASE SETUP ---
@@ -192,6 +193,13 @@ def upload_schedule(file: UploadFile = File(...)):
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
     return {"url": f"/uploads/schedules/{file.filename}"}
+
+@app.post("/upload-resource/")
+def upload_resource(file: UploadFile = File(...)):
+    file_location = f"uploads/resources/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(file.file, file_object)
+    return {"url": f"/uploads/resources/{file.filename}"}
 
 @app.get("/settings/{key}")
 def get_setting(key: str, db: Session = Depends(get_db)):
