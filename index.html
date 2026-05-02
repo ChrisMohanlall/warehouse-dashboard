@@ -317,16 +317,21 @@
                 <h3>Excel Uploads (Browser Session)</h3>
                 
                 <label>Upload Master Race Schedule (.xlsx):</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="file" id="upload_schedule_file" accept=".xlsx, .xls" style="padding: 10px; flex: 1;">
-                    <button class="btn btn-blue btn-inline" style="margin-top:0;" onclick="uploadSchedule()">Load</button>
+                <div style="display:flex; gap:10px; align-items: center;">
+                    <!-- Increased padding and added a background/border to make the file input larger and more prominent -->
+                    <input type="file" id="upload_schedule_file" accept=".xlsx, .xls" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
+                    
+                    <!-- Overrode the button styling to make it smaller and slimmer -->
+                    <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadSchedule()">Load</button>
                 </div>
 
                 <label style="margin-top: 15px;">Upload Truck Resource List (.xlsx):</label>
-                <div style="display:flex; gap:10px;">
-                    <select id="upload_resource_truck" style="flex: 1;"><option value="">Select Truck...</option></select>
-                    <input type="file" id="upload_resource_file" accept=".xlsx, .xls" style="padding: 10px; flex: 1;">
-                    <button class="btn btn-blue btn-inline" style="margin-top:0;" onclick="uploadTruckResource()">Load</button>
+                <div style="display:flex; gap:10px; align-items: center;">
+                    <select id="upload_resource_truck" style="flex: 1; padding: 12px;"><option value="">Select Truck...</option></select>
+                    
+                    <input type="file" id="upload_resource_file" accept=".xlsx, .xls" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
+                    
+                    <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadTruckResource()">Load</button>
                 </div>
             </div>
 
