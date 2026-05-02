@@ -162,7 +162,7 @@ class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
 class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
 class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
-class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; location_id: int; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
+class TruckUpdate(BaseModel): truck_name: str; license_plate: str; purpose: str; start_fuel: float; status: str; location_id: int; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
@@ -322,6 +322,9 @@ def create_truck(truck: TruckCreate, db: Session = Depends(get_db)):
 @app.put("/trucks/{truck_id}")
 def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends(get_db)):
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
+    
+    truck.truck_name = truck_update.truck_name 
+    
     truck.license_plate = truck_update.license_plate
     truck.purpose = truck_update.purpose
     truck.start_fuel = truck_update.start_fuel
