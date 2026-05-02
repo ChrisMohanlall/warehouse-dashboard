@@ -1123,9 +1123,17 @@
         const isEditingTrk = $('edit_trk_id') && $('edit_trk_id').value !== "";
         
         if (!isEditingLoc && !isEditingTrk) {
-            loadData();
+            // Capture the admin's current reading selections
+            const currentSchedule = $('schedule_select') ? $('schedule_select').value : "";
+            const currentResourceTrk = $('view_resource_truck') ? $('view_resource_truck').value : "";
+
+            loadData().then(() => {
+                // Restore their selections seamlessly
+                if($('schedule_select')) $('schedule_select').value = currentSchedule;
+                if($('view_resource_truck')) $('view_resource_truck').value = currentResourceTrk;
+            });
         }
-    }, 30000); 
+    }, 30000);
 </script>
 </body>
 </html>
