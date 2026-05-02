@@ -213,7 +213,7 @@
                         <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
                     </select>
                     <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
-                    <div id="trk_initial_loc_wrapper"><label>Initial Location:</label><select id="trk_loc"></select></div>
+                    <label id="trk_loc_label">Initial Location:</label><select id="trk_loc"></select></div>
                     <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
                     <label>General Notes:</label><textarea id="trk_notes"></textarea>
                     
@@ -592,6 +592,12 @@
             trucks.forEach(t => { $('remove_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
         }
 
+        // NEW: Populate the Truck Location dropdown
+        if($('trk_loc')) {
+            $('trk_loc').innerHTML = '<option value="">Select Location...</option>';
+            locations.forEach(l => $('trk_loc').innerHTML += `<option value="${l.id}">${l.name} - ${l.type}</option>`);
+        }
+
         if($('upload_resource_truck')) {
             $('upload_resource_truck').innerHTML = '<option value="">Select...</option>';
             $('view_resource_truck').innerHTML = '<option value="">-- Choose a Truck --</option>';
@@ -763,10 +769,12 @@
 
     function setTrkMode(mode) {
         if(mode === 'add') {
-            $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('trk_initial_loc_wrapper').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
+            $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
+            $('trk_loc_label').innerText = "Initial Location:"; // Updates label text
             updateIconPreview('trk');
         } else {
-            $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('trk_initial_loc_wrapper').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
+            $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
+            $('trk_loc_label').innerText = "Current Location:"; // Updates label text
             updateIconPreview('trk');
         }
     }
@@ -920,12 +928,16 @@
         const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
         if(!trk) return;
         $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || ""; $('trk_excel').value = trk.resource_excel_url;
+        
+        $('trk_loc').value = trk.current_location_id || ""; // NEW: Loads current location
+        
         $('btn-save-trk').style.display = 'none'; $('btn-update-trk').style.display = 'block';
         updateIconPreview('trk');
     }
 
     async function updateTruck() {
-        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
+        // NEW: Added location_id to the payload
+        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
         alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
 
