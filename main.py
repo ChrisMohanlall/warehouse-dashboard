@@ -102,7 +102,33 @@ Base.metadata.create_all(bind=engine)
 # --- DEFAULT SETTINGS ---
 DEFAULT_ICONS = [
     {"name": "Standard Teardrop", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/teardrop.png?raw=true"},
-    {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crslogo.png?raw=true"}
+    {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crslogo.png?raw=true"},
+    {"name": "Truck A", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_A.svg?raw=true"},
+    {"name": "Truck B", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_B.svg?raw=true"},
+    {"name": "Truck C", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_C.svg?raw=true"},
+    {"name": "Truck D", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_D.svg?raw=true"},
+    {"name": "Truck E", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_E.svg?raw=true"},
+    {"name": "Truck F", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_F.svg?raw=true"},
+    {"name": "Truck G", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_G.svg?raw=true"},
+    {"name": "Truck H", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_H.svg?raw=true"},
+    {"name": "Truck I", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_I.svg?raw=true"},
+    {"name": "Truck J", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_J.svg?raw=true"},
+    {"name": "Truck K", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_K.svg?raw=true"},
+    {"name": "Truck L", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_L.svg?raw=true"},
+    {"name": "Truck M", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_M.svg?raw=true"},
+    {"name": "Truck N", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_N.svg?raw=true"},
+    {"name": "Truck O", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_O.svg?raw=true"},
+    {"name": "Truck P", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_P.svg?raw=true"},
+    {"name": "Truck Q", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Q.svg?raw=true"},
+    {"name": "Truck R", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_R.svg?raw=true"},
+    {"name": "Truck S", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_S.svg?raw=true"},
+    {"name": "Truck T", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_T.svg?raw=true"},
+    {"name": "Truck U", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_U.svg?raw=true"},
+    {"name": "Truck V", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_V.svg?raw=true"},
+    {"name": "Truck W", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_W.svg?raw=true"},
+    {"name": "Truck X", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_X.svg?raw=true"},
+    {"name": "Truck Y", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Y.svg?raw=true"},
+    {"name": "Truck Z", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Z.svg?raw=true"}
 ]
 
 # Seed initial settings if blank
