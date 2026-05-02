@@ -339,8 +339,31 @@
         map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 12 });
         adminMap = new mapboxgl.Map({ container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 });
         adminMap.on('click', (e) => setAdminMarker(e.lngLat.lat, e.lngLat.lng, 'loc_lat', 'loc_lng'));
+        
+        // NEW: Listen to map zoom and trigger the scaler
+        map.on('zoom', () => scaleRouteMarkers(map));
+        
         map.on('load', () => loadData());
     });
+
+    // NEW: Function to dynamically shrink route pins when zooming out
+    function scaleRouteMarkers(targetMap) {
+        const zoom = targetMap.getZoom();
+        
+        // Formula: Size shrinks smoothly from 100% at zoom 14, down to 40% at zoom 9.
+        const scale = Math.max(0.4, Math.min(1, (zoom - 9) / 5)); 
+        
+        Object.values(routeMarkers).forEach(markerArray => {
+            markerArray.forEach(m => {
+                const svg = m.getElement().querySelector('svg');
+                if (svg) {
+                    svg.style.transform = `scale(${scale})`;
+                    svg.style.transformOrigin = 'bottom center'; // Keeps the pin tip anchored exactly on the location
+                    svg.style.transition = 'transform 0.1s ease'; // Adds a smooth visual animation
+                }
+            });
+        });
+    }
 
     function setStyle(targetMap, styleName, mapPrefix) {
         targetMap.setStyle(`mapbox://styles/mapbox/${styleName}`);
@@ -563,10 +586,13 @@
                 routeMarkers[layerId].push(marker);
             });
 
+            // NEW: Apply the scale math instantly after spawning the pins
+            scaleRouteMarkers(targetMap);
         } catch (err) {
             console.error("Failed to render interactive route data:", err);
         }
     }
+    
 
     function renderSidebarLists() {
         const trkList = $('list-trucks');
