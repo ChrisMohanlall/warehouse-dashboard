@@ -184,6 +184,9 @@
             mapboxgl.accessToken = config.mapbox_token;
             mobileMap = new mapboxgl.Map({ container: 'mobile-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 11 });
             mobileMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+            
+            // NEW: Listen to map zoom on mobile
+            mobileMap.on('zoom', () => scaleRouteMarkers(mobileMap));
         }
 
         const [drivers, locations, trucks, raceSettings, routes, raceLogo] = await Promise.all([
@@ -331,6 +334,9 @@
                 routeMarkers[layerId].push(marker);
             });
 
+            // NEW: Apply the scale math instantly
+            scaleRouteMarkers(targetMap);
+
         } catch (err) {
             console.error("Failed to render interactive route data:", err);
         }
@@ -359,6 +365,22 @@
         $('new_dr_first').value = ''; $('new_dr_last').value = ''; $('new_dr_phone').value = '';
         $('driverModal').style.display='none'; 
         loadData(); 
+    }
+
+    function scaleRouteMarkers(targetMap) {
+        const zoom = targetMap.getZoom();
+        const scale = Math.max(0.4, Math.min(1, (zoom - 9) / 5)); 
+        
+        Object.values(routeMarkers).forEach(markerArray => {
+            markerArray.forEach(m => {
+                const svg = m.getElement().querySelector('svg');
+                if (svg) {
+                    svg.style.transform = `scale(${scale})`;
+                    svg.style.transformOrigin = 'bottom center';
+                    svg.style.transition = 'transform 0.1s ease';
+                }
+            });
+        });
     }
 
     async function saveLocation() {
