@@ -185,7 +185,6 @@
             mobileMap = new mapboxgl.Map({ container: 'mobile-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 11 });
             mobileMap.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
             
-            // NEW: Listen to map zoom on mobile
             mobileMap.on('zoom', () => scaleRouteMarkers(mobileMap));
         }
 
@@ -229,14 +228,12 @@
         
         routes.items.forEach((url, i) => drawRouteOnMap(url, `route-${i}`, mobileMap));
         
-        // Remove old routes and pins from the driver map if the admin deleted them
         let excessIdx = routes.items.length;
         while (mobileMap && mobileMap.getSource(`route-${excessIdx}`)) {
             if (mobileMap.getLayer(`route-${excessIdx}-line`)) mobileMap.removeLayer(`route-${excessIdx}-line`);
-            if (mobileMap.getLayer(`route-${excessIdx}`)) mobileMap.removeLayer(`route-${excessIdx}`); // Fallback
+            if (mobileMap.getLayer(`route-${excessIdx}`)) mobileMap.removeLayer(`route-${excessIdx}`); 
             mobileMap.removeSource(`route-${excessIdx}`);
             
-            // Delete the physical waypoint pins
             if (routeMarkers[`route-${excessIdx}`]) {
                 routeMarkers[`route-${excessIdx}`].forEach(m => m.remove());
                 delete routeMarkers[`route-${excessIdx}`];
@@ -274,15 +271,12 @@
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
         
         try {
-            // 1. Fetch the GeoJSON data directly
             const response = await fetch(url);
             const data = await response.json();
 
-            // 2. Separate paths (lines) and waypoints (points)
             const lines = { type: 'FeatureCollection', features: data.features.filter(f => f.geometry.type.includes('LineString')) };
             const points = data.features.filter(f => f.geometry.type === 'Point');
 
-            // 3. Draw the route paths on the canvas
             if (!targetMap.getSource(layerId)) {
                 targetMap.addSource(layerId, { type: 'geojson', data: lines });
                 targetMap.addLayer({ 
@@ -296,36 +290,31 @@
                 targetMap.getSource(layerId).setData(lines);
             }
 
-            // 4. Clear old waypoint markers for this route if they exist
             if (routeMarkers[layerId]) {
                 routeMarkers[layerId].forEach(m => m.remove());
             }
             routeMarkers[layerId] = [];
 
-            // 5. Draw waypoints as interactive Mapbox Pins
             points.forEach((pt, index) => {
                 const coords = pt.geometry.coordinates;
                 const name = pt.properties.name || `Waypoint ${index + 1}`;
                 const desc = pt.properties.description || '';
                 
-                // Smart color coding to differentiate waypoint types automatically
                 const nameLower = name.toLowerCase();
-                let pinColor = '#8e8e93'; // Default Gray for generic points
-                if(nameLower.includes('start')) pinColor = '#34c759'; // Green
-                else if(nameLower.includes('finish') || nameLower.includes('end')) pinColor = '#ff3b30'; // Red
-                else if(nameLower.includes('water') || nameLower.includes('hydration') || nameLower.includes('aid')) pinColor = '#007bff'; // Blue
-                else if(nameLower.includes('km') || nameLower.includes('mile') || nameLower.includes('marker')) pinColor = '#ffcc00'; // Yellow
-                else if(nameLower.includes('medical') || nameLower.includes('first aid')) pinColor = '#ff3b30'; // Red
+                let pinColor = '#8e8e93'; 
+                if(nameLower.includes('start')) pinColor = '#34c759'; 
+                else if(nameLower.includes('finish') || nameLower.includes('end')) pinColor = '#ff3b30'; 
+                else if(nameLower.includes('water') || nameLower.includes('hydration') || nameLower.includes('aid')) pinColor = '#007bff'; 
+                else if(nameLower.includes('km') || nameLower.includes('mile') || nameLower.includes('marker')) pinColor = '#ffcc00'; 
+                else if(nameLower.includes('medical') || nameLower.includes('first aid')) pinColor = '#ff3b30'; 
                 
                 let popupHtml = `<b>${name}</b>`;
                 if (desc) popupHtml += `<br><span style="font-size:0.85rem;color:#666;">${desc}</span>`;
                 
-                // Add Driver Navigation Link if viewed on the Driver Portal
                 if (window.isDriverApp) {
                     popupHtml += `<br><a href="https://www.google.com/maps/dir/?api=1&destination=${coords[1]},${coords[0]}" target="_blank" style="display:block; margin-top:10px; padding:8px; background:#007bff; color:white; text-align:center; text-decoration:none; border-radius:4px; font-weight:bold;">🧭 Navigate Here</a>`;
                 }
 
-                // Spawn the pin
                 const marker = new mapboxgl.Marker({ color: pinColor })
                     .setLngLat([coords[0], coords[1]])
                     .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
@@ -334,7 +323,6 @@
                 routeMarkers[layerId].push(marker);
             });
 
-            // NEW: Apply the scale math instantly
             scaleRouteMarkers(targetMap);
 
         } catch (err) {
@@ -430,9 +418,7 @@
 
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 
-    // AUTO-REFRESH: Update the driver map every 30 seconds
     setInterval(() => {
-        // SAFETY CHECK: Only refresh if the driver isn't actively typing a log or using a modal
         const isLoggingTrip = $('trip_km') && $('trip_km').value !== "";
         const isLoggingFuel = $('fuel_km') && $('fuel_km').value !== "";
         const isModalOpen = ($('driverModal') && $('driverModal').style.display === 'flex') || 
@@ -440,19 +426,17 @@
         
         if (!isLoggingTrip && !isLoggingFuel && !isModalOpen) {
             
-            // Optional: Save dropdown selections so they don't reset if the driver was just looking at them
             const currentTripDriver = $('trip_driver').value;
             const currentTripTruck = $('trip_truck').value;
             const currentTripLoc = $('trip_location').value;
 
-            // Run the refresh, then re-apply their dropdown choices
             loadData().then(() => {
                 $('trip_driver').value = currentTripDriver;
                 $('trip_truck').value = currentTripTruck;
                 $('trip_location').value = currentTripLoc;
             });
         }
-    }, 30000); // 30000 milliseconds = 30 seconds
+    }, 30000);
 </script>
 </body>
 </html>
