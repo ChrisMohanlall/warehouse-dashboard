@@ -279,6 +279,8 @@
     <!-- SETTINGS VIEW -->
     <div id="settings-view" class="view-section">
         <div class="form-grid">
+            
+            <!-- TOP LEFT: Event Config & Icons -->
             <div class="card">
                 <h2>Event Configuration</h2>
                 <label>Current Race / Event Name:</label>
@@ -300,28 +302,26 @@
                     <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="addIcon()">Add</button>
                 </div>
                 <ul id="icon_list" class="list-group" style="margin-top:10px;"></ul>
+            </div>
 
-                <hr style="margin:20px 0; border:1px solid #eee;">
-
+            <!-- TOP RIGHT: Race Routes & Excel Uploads -->
+            <div class="card">
+                <h2>Routes & Resources</h2>
                 <h3>Race Routes</h3>
                 <p style="font-size:0.85rem; color:#666;">Upload Mapbox GeoJSON or Google Earth KML/KMZ files.</p>
                 <label>Upload New Route File:</label>
                 <div style="display:flex; gap:10px;">
-                    <!-- Updated to accept kml and kmz -->
                     <input type="file" id="new_route_file" accept=".geojson,.json,.kml,.kmz" style="padding: 5px;">
                     <button class="btn btn-green btn-inline" style="margin-top:0;" onclick="uploadRoute()">Upload</button>
                 </div>
                 <ul id="route_list" class="list-group" style="margin-top:10px;"></ul>
 
                 <hr style="margin:20px 0; border:1px solid #eee;">
-                <h3>Excel Uploads (Browser Session)</h3>
                 
+                <h3>Excel Uploads (Browser Session)</h3>
                 <label>Upload Master Race Schedule (.xlsx):</label>
                 <div style="display:flex; gap:10px; align-items: center;">
-                    <!-- Increased padding and added a background/border to make the file input larger and more prominent -->
                     <input type="file" id="upload_schedule_file" accept=".xlsx, .xls" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
-                    
-                    <!-- Overrode the button styling to make it smaller and slimmer -->
                     <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadSchedule()">Load</button>
                 </div>
 
@@ -335,12 +335,14 @@
                 </div>
             </div>
 
+            <!-- BOTTOM LEFT: Danger Zone -->
             <div class="card" style="background: #fff3cd; border: 1px solid #ffc107;">
                 <h2 style="color: #856404;">⚠️ DANGER ZONE: Full Reset</h2>
                 <p style="color: #666; font-size: 0.95rem;">This will permanently delete all data to prepare for a new race weekend. <b>Cannot be undone.</b></p>
                 <input type="range" id="wipe-slider" min="0" max="100" value="0" oninput="checkWipeSlider()" style="width: 100%; height: 30px; cursor: pointer;">
                 <button id="btn-wipe" class="btn btn-red" style="display: none; width: 100%; font-size: 1.2rem; padding: 15px; margin-top: 20px;" onclick="executeWipe()">🚨 CONFIRM WIPE 🚨</button>
             </div>
+
         </div>
     </div>
 </div>
