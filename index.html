@@ -1041,10 +1041,9 @@
             start_fuel: parseFloat($('trk_fuel').value||0), 
             location_id: parseInt($('trk_loc').value||1), 
             icon_url: $('trk_icon_select').value, 
-            general_notes: $('trk_notes').value,
+            general_notes: $('trk_notes').value,  // Added missing notes
             resource_excel_url: "" 
         });
-        
         alert("Truck created!"); 
         $('truckForm').reset(); 
         loadData();
