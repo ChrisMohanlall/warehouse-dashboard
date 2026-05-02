@@ -324,7 +324,6 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
     truck = db.query(DBTruck).filter(DBTruck.id == truck_id).first()
     
     truck.truck_name = truck_update.truck_name 
-    
     truck.license_plate = truck_update.license_plate
     truck.purpose = truck_update.purpose
     truck.start_fuel = truck_update.start_fuel
