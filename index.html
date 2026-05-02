@@ -757,22 +757,49 @@
     // --- TAB MANAGEMENT ---
     function setLocMode(mode) {
         if(mode === 'add') {
-            $('loc-tab-add').className = 'btn btn-inline btn-blue'; $('loc-tab-manage').className = 'btn btn-inline'; $('loc-tab-manage').style.background = '#ddd'; $('loc-manage-selector').style.display = 'none'; resetLocForm();
+            $('loc-tab-add').className = 'btn btn-inline btn-blue'; 
+            $('loc-tab-manage').className = 'btn btn-inline'; 
+            $('loc-tab-manage').style.background = '#ddd'; 
+            $('loc-manage-selector').style.display = 'none'; 
+            resetLocForm();
         } else {
-            $('loc-tab-manage').className = 'btn btn-inline btn-blue'; $('loc-tab-manage').style.background = ''; $('loc-tab-add').className = 'btn btn-inline'; $('loc-tab-add').style.background = '#ddd'; $('loc-manage-selector').style.display = 'block'; resetLocForm(); $('btn-save-loc').style.display = 'none';
+            $('loc-tab-manage').className = 'btn btn-inline btn-blue'; 
+            $('loc-tab-manage').style.background = ''; 
+            $('loc-tab-add').className = 'btn btn-inline'; 
+            $('loc-tab-add').style.background = '#ddd'; 
+            $('loc-manage-selector').style.display = 'block'; 
+            resetLocForm(); 
         }
     }
 
     function setTrkMode(mode) {
+        $('truckForm').reset();
+        $('edit_trk_id').value = "";
+        
         if(mode === 'add') {
-            $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
+            $('trk-tab-add').className = 'btn btn-inline btn-blue'; 
+            $('trk-tab-manage').className = 'btn btn-inline'; 
+            $('trk-tab-manage').style.background = '#ddd'; 
+            $('trk-manage-selector').style.display = 'none'; 
+            
+            $('btn-save-trk').style.display = 'block'; 
+            $('btn-update-trk').style.display = 'none';
             $('trk_loc_label').innerText = "Initial Location:"; 
-            updateIconPreview('trk');
         } else {
-            $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
+            $('trk-tab-manage').className = 'btn btn-inline btn-blue'; 
+            $('trk-tab-manage').style.background = ''; 
+            $('trk-tab-add').className = 'btn btn-inline'; 
+            $('trk-tab-add').style.background = '#ddd'; 
+            $('trk-manage-selector').style.display = 'block'; 
+            
+            $('btn-save-trk').style.display = 'none';
+            // Show the update button immediately, but dim it to look disabled
+            $('btn-update-trk').style.display = 'block'; 
+            $('btn-update-trk').style.opacity = '0.5';   
+            $('btn-update-trk').style.cursor = 'not-allowed';
             $('trk_loc_label').innerText = "Current Location:"; 
-            updateIconPreview('trk');
         }
+        updateIconPreview('trk');
     }
 
     // --- DATA SUBMISSION ---
@@ -876,9 +903,21 @@
     }
     
     function resetLocForm() {
-        $('locationForm').reset(); $('edit_loc_id').value = ""; $('loc_desc_wrapper').style.display = 'none';
-        if($('loc-manage-selector').style.display === 'block') { $('btn-save-loc').style.display = 'none'; $('btn-update-loc').style.display = 'none'; } 
-        else { $('btn-save-loc').style.display = 'block'; $('btn-update-loc').style.display = 'none'; }
+        $('locationForm').reset(); 
+        $('edit_loc_id').value = ""; 
+        $('loc_desc_wrapper').style.display = 'none';
+        
+        if($('loc-manage-selector').style.display === 'block') { 
+            $('btn-save-loc').style.display = 'none'; 
+            // Show the update button immediately, but dim it to look disabled
+            $('btn-update-loc').style.display = 'block'; 
+            $('btn-update-loc').style.opacity = '0.5';   
+            $('btn-update-loc').style.cursor = 'not-allowed';
+        } else { 
+            $('btn-save-loc').style.display = 'block'; 
+            $('btn-update-loc').style.display = 'none'; 
+        }
+        
         if (adminMarker) adminMarker.remove();
         updateIconPreview('loc');
     }
@@ -900,14 +939,32 @@
     function loadLocForEdit() {
         const loc = globalLocations.find(l => l.id == $('manage_loc_select').value);
         if(!loc) { resetLocForm(); return; }
-        $('edit_loc_id').value = loc.id; $('loc_name').value = loc.name; $('loc_type').value = loc.type; $('loc_icon_select').value = loc.icon_url || "";
-        $('loc_lat').value = loc.lat; $('loc_lng').value = loc.lng;
-        if(loc.lat !== null && loc.lng !== null) { adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 }); setAdminMarker(loc.lat, loc.lng, 'loc_lat', 'loc_lng'); }
-        $('btn-save-loc').style.display = 'none'; $('btn-update-loc').style.display = 'block';
+        
+        $('edit_loc_id').value = loc.id; 
+        $('loc_name').value = loc.name; 
+        $('loc_type').value = loc.type; 
+        $('loc_icon_select').value = loc.icon_url || "";
+        $('loc_lat').value = loc.lat; 
+        $('loc_lng').value = loc.lng;
+        
+        if(loc.lat !== null && loc.lng !== null) { 
+            adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 }); 
+            setAdminMarker(loc.lat, loc.lng, 'loc_lat', 'loc_lng'); 
+        }
+        
+        // Fully enable the button once a location is successfully selected
+        $('btn-save-loc').style.display = 'none'; 
+        $('btn-update-loc').style.display = 'block';
+        $('btn-update-loc').style.opacity = '1';
+        $('btn-update-loc').style.cursor = 'pointer';
+        
         updateIconPreview('loc');
     }
 
     async function updateLocation() {
+        // Safety catch to prevent submission if the button is clicked while "disabled"
+        if (!$('edit_loc_id').value) return alert("Please select a location to edit first.");
+        
         await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value) });
         alert("Location Updated!"); setLocMode('add'); loadData();
     }
@@ -919,16 +976,38 @@
 
     function loadTrkForEdit() {
         const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
-        if(!trk) return;
-        $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || "";
+        if(!trk) { 
+            // Dim the button again if they change the dropdown back to "Select..."
+            $('truckForm').reset();
+            $('edit_trk_id').value = "";
+            $('btn-update-trk').style.opacity = '0.5';
+            $('btn-update-trk').style.cursor = 'not-allowed';
+            updateIconPreview('trk');
+            return; 
+        }
         
+        $('edit_trk_id').value = trk.id; 
+        $('trk_name').value = trk.truck_name; 
+        $('trk_plate').value = trk.license_plate; 
+        $('trk_purpose').value = trk.purpose; 
+        $('trk_status').value = trk.status; 
+        $('trk_fuel').value = trk.start_fuel; 
+        $('trk_icon_select').value = trk.icon_url || "";
         $('trk_loc').value = trk.current_location_id || ""; 
         
-        $('btn-save-trk').style.display = 'none'; $('btn-update-trk').style.display = 'block';
+        // Fully enable the button once a truck is successfully selected
+        $('btn-save-trk').style.display = 'none'; 
+        $('btn-update-trk').style.display = 'block';
+        $('btn-update-trk').style.opacity = '1';
+        $('btn-update-trk').style.cursor = 'pointer';
+        
         updateIconPreview('trk');
     }
 
     async function updateTruck() {
+        // Safety catch to prevent submission if the button is clicked while "disabled"
+        if (!$('edit_trk_id').value) return alert("Please select a truck to edit first.");
+        
         await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
         alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
