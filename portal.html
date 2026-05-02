@@ -329,18 +329,36 @@
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
 
+            let maxLength = Math.max(...data.map(r => r.length));
+            data.forEach(r => { while(r.length < maxLength) r.push(""); });
+
+            let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
+
             let html = '<table class="excel-table"><thead><tr>';
             data[0].forEach(header => { html += `<th>${header || ''}</th>`; });
             html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
+            let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
+
             for(let i = 1; i < data.length; i++) {
-                if(data[i].length === 0) continue; 
+                if(data[i].every(c => c === null || c === undefined || c.toString().trim() === '')) continue; 
+                
                 html += '<tr>';
-                data[i].forEach(cell => { html += `<td>${cell || ''}</td>`; });
+                let rowState = state[i] || {};
+                
+                data[i].forEach((cell, colIdx) => {
+                    if (colIdx === notesColIndex) {
+                        let noteVal = rowState.note !== undefined ? rowState.note : (cell || '');
+                        html += `<td><input type="text" value="${noteVal.replace(/"/g, '&quot;')}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
+                    } else {
+                        html += `<td>${cell || ''}</td>`;
+                    }
+                });
+                
                 html += `
-                    <td style="text-align:center;"><input type="checkbox" style="width:20px; height:20px;"></td>
-                    <td style="text-align:center;"><input type="checkbox" style="width:20px; height:20px;"></td>
-                    <td style="text-align:center;"><input type="checkbox" style="width:20px; height:20px;"></td>
+                    <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
+                    <td style="text-align:center;"><input type="checkbox" ${rowState.c2 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c2', this.checked)" style="width:20px; height:20px;"></td>
+                    <td style="text-align:center;"><input type="checkbox" ${rowState.c3 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c3', this.checked)" style="width:20px; height:20px;"></td>
                 </tr>`;
             }
             html += '</tbody></table>';
@@ -348,6 +366,34 @@
         } catch (err) {
             console.error("Failed to parse resource:", err);
             container.innerHTML = '<p style="color: red;">Failed to load resource list.</p>';
+        }
+    }
+
+    async function saveResourceState(truckId, rowIdx, field, value) {
+        const trk = globalTrucks.find(t => t.id == truckId);
+        if(!trk) return;
+        
+        let state = trk.resource_state ? JSON.parse(trk.resource_state) : {};
+        if (!state[rowIdx]) state[rowIdx] = {};
+        state[rowIdx][field] = value;
+        
+        trk.resource_state = JSON.stringify(state);
+        
+        try {
+            await apiCall(`/trucks/${truckId}`, 'PUT', { 
+                truck_name: trk.truck_name,
+                license_plate: trk.license_plate, 
+                purpose: trk.purpose, 
+                status: trk.status, 
+                start_fuel: trk.start_fuel, 
+                location_id: trk.current_location_id || 1, 
+                icon_url: trk.icon_url || "", 
+                general_notes: trk.general_notes || "",
+                resource_excel_url: trk.resource_excel_url || "",
+                resource_state: trk.resource_state
+            });
+        } catch(e) {
+            console.error("Failed to sync state to server", e);
         }
     }
 
