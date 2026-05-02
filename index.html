@@ -614,12 +614,14 @@
             
             // 3. Update the truck in the database with the new resource URL
             await apiCall(`/trucks/${truckId}`, 'PUT', { 
+                truck_name: trk.truck_name,
                 license_plate: trk.license_plate, 
                 purpose: trk.purpose, 
                 status: trk.status, 
                 start_fuel: trk.start_fuel, 
                 location_id: trk.current_location_id || 1, 
                 icon_url: trk.icon_url || "", 
+                general_notes: trk.general_notes || "",
                 resource_excel_url: absoluteUrl 
             });
             
@@ -981,7 +983,7 @@
         $('trk_fuel').value = trk.start_fuel; 
         $('trk_icon_select').value = trk.icon_url || "";
         $('trk_loc').value = trk.current_location_id || ""; 
-        
+        $('trk_notes').value = trk.general_notes || "";
         $('btn-save-trk').style.display = 'none'; 
         $('btn-update-trk').style.display = 'block';
         $('btn-update-trk').style.opacity = '1';
@@ -993,19 +995,20 @@
     async function updateTruck() {
         if (!$('edit_trk_id').value) return alert("Please select a truck to edit first.");
         
-        // Fetch the existing truck data so we don't accidentally delete its resource URL
         const trkId = $('edit_trk_id').value;
         const trk = globalTrucks.find(t => t.id == trkId);
         const existingResourceUrl = trk ? (trk.resource_excel_url || "") : "";
 
         await apiCall(`/trucks/${trkId}`, 'PUT', { 
+            truck_name: $('trk_name').value,
             license_plate: $('trk_plate').value, 
             purpose: $('trk_purpose').value, 
             status: $('trk_status').value, 
             start_fuel: parseFloat($('trk_fuel').value||0), 
             location_id: parseInt($('trk_loc').value), 
-            icon_url: $('trk_icon_select').value, 
-            resource_excel_url: existingResourceUrl // Preserves the uploaded sheet!
+            icon_url: $('trk_icon_select').value,
+            general_notes: $('trk_notes').value, 
+            resource_excel_url: existingResourceUrl 
         });
         
         alert("Truck Updated!"); 
@@ -1030,8 +1033,21 @@
     }
 
     async function submitTruck() {
-        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
-        alert("Truck created!"); $('truckForm').reset(); loadData();
+        await apiCall('/trucks/', 'POST', { 
+            truck_name: $('trk_name').value, 
+            license_plate: $('trk_plate').value, 
+            purpose: $('trk_purpose').value, 
+            status: $('trk_status').value, 
+            start_fuel: parseFloat($('trk_fuel').value||0), 
+            location_id: parseInt($('trk_loc').value||1), 
+            icon_url: $('trk_icon_select').value, 
+            general_notes: $('trk_notes').value,
+            resource_excel_url: "" 
+        });
+        
+        alert("Truck created!"); 
+        $('truckForm').reset(); 
+        loadData();
     }
 
     async function addIcon() { 
