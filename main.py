@@ -13,8 +13,10 @@ import datetime
 
 load_dotenv()
 
-# Ensure the upload directory exists for route files
+# Ensure the upload directories exist
 os.makedirs("uploads/routes", exist_ok=True)
+os.makedirs("uploads/schedules", exist_ok=True)
+
 
 # --- DATABASE SETUP ---
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fleet.db") 
@@ -100,33 +102,7 @@ Base.metadata.create_all(bind=engine)
 # --- DEFAULT SETTINGS ---
 DEFAULT_ICONS = [
     {"name": "Standard Teardrop", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/teardrop.png?raw=true"},
-    {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crslogo.png?raw=true"},
-    {"name": "Truck A", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_A.svg?raw=true"},
-    {"name": "Truck B", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_B.svg?raw=true"},
-    {"name": "Truck C", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_C.svg?raw=true"},
-    {"name": "Truck D", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_D.svg?raw=true"},
-    {"name": "Truck E", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_E.svg?raw=true"},
-    {"name": "Truck F", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_F.svg?raw=true"},
-    {"name": "Truck G", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_G.svg?raw=true"},
-    {"name": "Truck H", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_H.svg?raw=true"},
-    {"name": "Truck I", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_I.svg?raw=true"},
-    {"name": "Truck J", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_J.svg?raw=true"},
-    {"name": "Truck K", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_K.svg?raw=true"},
-    {"name": "Truck L", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_L.svg?raw=true"},
-    {"name": "Truck M", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_M.svg?raw=true"},
-    {"name": "Truck N", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_N.svg?raw=true"},
-    {"name": "Truck O", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_O.svg?raw=true"},
-    {"name": "Truck P", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_P.svg?raw=true"},
-    {"name": "Truck Q", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Q.svg?raw=true"},
-    {"name": "Truck R", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_R.svg?raw=true"},
-    {"name": "Truck S", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_S.svg?raw=true"},
-    {"name": "Truck T", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_T.svg?raw=true"},
-    {"name": "Truck U", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_U.svg?raw=true"},
-    {"name": "Truck V", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_V.svg?raw=true"},
-    {"name": "Truck W", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_W.svg?raw=true"},
-    {"name": "Truck X", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_X.svg?raw=true"},
-    {"name": "Truck Y", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Y.svg?raw=true"},
-    {"name": "Truck Z", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/icon_Z.svg?raw=true"}
+    {"name": "Warehouse", "url": "https://github.com/ChrisMohanlall/warehouse-dashboard/blob/main/icons/crslogo.png?raw=true"}
 ]
 
 # Seed initial settings if blank
@@ -146,7 +122,6 @@ def log_activity(db: Session, user: str, action: str, details: str):
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Mount the static directory so uploaded files have a public URL
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 def get_db():
@@ -179,13 +154,18 @@ def get_config(): return {"mapbox_token": os.getenv("MAPBOX_API_KEY", "")}
 
 @app.post("/upload-route/")
 def upload_route(file: UploadFile = File(...)):
-    # Save the uploaded file to the local disk
     file_location = f"uploads/routes/{file.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(file.file, file_object)
-    
-    # Return the new URL path so the frontend can save it to the database
     return {"url": f"/uploads/routes/{file.filename}"}
+
+# NEW ENDPOINT: Securely saves schedules physically to the server
+@app.post("/upload-schedule/")
+def upload_schedule(file: UploadFile = File(...)):
+    file_location = f"uploads/schedules/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(file.file, file_object)
+    return {"url": f"/uploads/schedules/{file.filename}"}
 
 @app.get("/settings/{key}")
 def get_setting(key: str, db: Session = Depends(get_db)):
@@ -316,7 +296,6 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
     truck.resource_excel_url = truck_update.resource_excel_url
     truck.icon_url = truck_update.icon_url
 
-    # NEW: Fetch the selected location and update the truck's coordinates
     loc = db.query(DBLocation).filter(DBLocation.id == truck_update.location_id).first()
     if loc:
         truck.current_location_id = loc.id
