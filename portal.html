@@ -538,14 +538,21 @@
         
         if (!isLoggingTrip && !isLoggingFuel && !isModalOpen) {
             
+            // Capture the driver's current selections
             const currentTripDriver = $('trip_driver').value;
             const currentTripTruck = $('trip_truck').value;
             const currentTripLoc = $('trip_location').value;
+            const currentSchedule = $('schedule_select') ? $('schedule_select').value : "";
+            const currentResourceTrk = $('resource_truck_select') ? $('resource_truck_select').value : "";
 
             loadData().then(() => {
+                // Restore their selections seamlessly
                 $('trip_driver').value = currentTripDriver;
                 $('trip_truck').value = currentTripTruck;
                 $('trip_location').value = currentTripLoc;
+                
+                if($('schedule_select')) $('schedule_select').value = currentSchedule;
+                if($('resource_truck_select')) $('resource_truck_select').value = currentResourceTrk;
             });
         }
     }, 30000);
