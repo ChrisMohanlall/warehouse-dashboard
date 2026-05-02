@@ -992,8 +992,25 @@
 
     async function updateTruck() {
         if (!$('edit_trk_id').value) return alert("Please select a truck to edit first.");
-        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
-        alert("Truck Updated!"); setTrkMode('add'); loadData();
+        
+        // Fetch the existing truck data so we don't accidentally delete its resource URL
+        const trkId = $('edit_trk_id').value;
+        const trk = globalTrucks.find(t => t.id == trkId);
+        const existingResourceUrl = trk ? (trk.resource_excel_url || "") : "";
+
+        await apiCall(`/trucks/${trkId}`, 'PUT', { 
+            license_plate: $('trk_plate').value, 
+            purpose: $('trk_purpose').value, 
+            status: $('trk_status').value, 
+            start_fuel: parseFloat($('trk_fuel').value||0), 
+            location_id: parseInt($('trk_loc').value), 
+            icon_url: $('trk_icon_select').value, 
+            resource_excel_url: existingResourceUrl // Preserves the uploaded sheet!
+        });
+        
+        alert("Truck Updated!"); 
+        setTrkMode('add'); 
+        loadData();
     }
 
     function updateIconPreview(type) {
