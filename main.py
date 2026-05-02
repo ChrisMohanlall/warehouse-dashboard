@@ -162,7 +162,7 @@ class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
 class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
 class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
-class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
+class TruckUpdate(BaseModel): license_plate: str; purpose: str; start_fuel: float; status: str; location_id: int; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""
 class FuelLogCreate(BaseModel): truck_id: int; driver_id: int; km_at_fuel_up: float; receipt_url: str
 class TripLogCreate(BaseModel): truck_id: int; driver_id: int; destination_location_id: int; current_trip_end_km: float; end_fuel: float; damage_notes: str; damage_pic_url: str = ""
 
@@ -317,6 +317,14 @@ def update_truck(truck_id: int, truck_update: TruckUpdate, db: Session = Depends
     truck.general_notes = truck_update.general_notes
     truck.resource_excel_url = truck_update.resource_excel_url
     truck.icon_url = truck_update.icon_url
+
+    # NEW: Fetch the selected location and update the truck's coordinates
+    loc = db.query(DBLocation).filter(DBLocation.id == truck_update.location_id).first()
+    if loc:
+        truck.current_location_id = loc.id
+        truck.lat = loc.lat
+        truck.lng = loc.lng
+
     log_activity(db, "Admin", "Update Truck", f"Updated truck: {truck.truck_name}.")
     db.commit()
     return {"message": "Truck updated!"}
