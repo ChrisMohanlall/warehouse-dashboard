@@ -213,8 +213,7 @@
                         <option value="Parked">Parked</option><option value="In Transit">In Transit</option><option value="Docked">Docked</option>
                     </select>
                     <label>Start Fuel (%):</label><input type="number" id="trk_fuel" required>
-                    <label id="trk_loc_label">Initial Location:</label><select id="trk_loc"></select></div>
-                    <label>Resource Excel Link:</label><input type="text" id="trk_excel" placeholder="Google Sheet URL...">
+                    <label id="trk_loc_label">Initial Location:</label><select id="trk_loc"></select>
                     <label>General Notes:</label><textarea id="trk_notes"></textarea>
                     
                     <button type="button" class="btn btn-green" id="btn-save-trk" onclick="submitTruck()">Intake New Truck</button>
@@ -318,18 +317,18 @@
 
                 <hr style="margin:20px 0; border:1px solid #eee;">
                 
-                <h3>Excel Uploads (Browser Session)</h3>
-                <label>Upload Master Race Schedule (.xlsx):</label>
+                <h3>Uploads (Browser Session)</h3>
+                <label>Upload Master Race Schedule (.xlsx, .pdf):</label>
                 <div style="display:flex; gap:10px; align-items: center;">
-                    <input type="file" id="upload_schedule_file" accept=".xlsx, .xls" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
+                    <input type="file" id="upload_schedule_file" accept=".xlsx, .xls, .pdf" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
                     <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadSchedule()">Load</button>
                 </div>
 
-                <label style="margin-top: 15px;">Upload Truck Resource List (.xlsx):</label>
+                <label style="margin-top: 15px;">Upload Truck Resource List (.xlsx, .pdf):</label>
                 <div style="display:flex; gap:10px; align-items: center;">
                     <select id="upload_resource_truck" style="flex: 1; padding: 12px;"><option value="">Select Truck...</option></select>
                     
-                    <input type="file" id="upload_resource_file" accept=".xlsx, .xls" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
+                    <input type="file" id="upload_resource_file" accept=".xlsx, .xls, .pdf" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
                     
                     <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadTruckResource()">Load</button>
                 </div>
@@ -353,7 +352,7 @@
 <script>
     const API_URL = "https://crsdashboard.onrender.com";
     const defaultLngLat = [-79.347015, 43.651070]; 
-    window.isDriverApp = false; // Flag to identify app type
+    window.isDriverApp = false; 
     window.$ = id => document.getElementById(id);
     
     async function apiCall(endpoint, method = 'GET', body = null) {
@@ -374,19 +373,26 @@
         adminMap = new mapboxgl.Map({ container: 'admin-map', style: 'mapbox://styles/mapbox/streets-v12', center: defaultLngLat, zoom: 10 });
         adminMap.on('click', (e) => setAdminMarker(e.lngLat.lat, e.lngLat.lng, 'loc_lat', 'loc_lng'));
         
-        // NEW: Listen to map zoom and trigger the scaler
         map.on('zoom', () => scaleRouteMarkers(map));
         
         map.on('load', () => loadData());
     });
 
-    // Temporary memory for the Excel sheets while the browser is open
     let localTruckData = {}; 
 
     function uploadSchedule() {
         const file = $('upload_schedule_file').files[0];
-        if(!file) return alert("Please select an Excel file.");
+        if(!file) return alert("Please select a file.");
         
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+            const fileURL = URL.createObjectURL(file);
+            $('schedule-empty').style.display = 'none';
+            $('schedule-table-container').innerHTML = `<iframe src="${fileURL}" width="100%" height="600px" style="border:none;"></iframe>`;
+            alert("Schedule loaded into dashboard!");
+            $('upload_schedule_file').value = "";
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = e => {
             const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
@@ -395,7 +401,7 @@
             $('schedule-empty').style.display = 'none';
             const container = $('schedule-table-container');
             container.innerHTML = htmlTable;
-            container.querySelector('table').classList.add('excel-table'); // Apply styling
+            container.querySelector('table').classList.add('excel-table'); 
             alert("Schedule loaded into dashboard!");
             $('upload_schedule_file').value = "";
         };
@@ -407,10 +413,17 @@
         const truckId = $('upload_resource_truck').value;
         if(!file || !truckId) return alert("Please select both a truck and a file.");
         
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+            const fileURL = URL.createObjectURL(file);
+            localTruckData[truckId] = { isPdf: true, url: fileURL };
+            alert("Truck resources loaded!");
+            $('upload_resource_file').value = "";
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = e => {
             const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-            // Convert to JSON array to inject checkboxes later
             localTruckData[truckId] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             alert("Truck resources loaded!");
             $('upload_resource_file').value = "";
@@ -428,13 +441,17 @@
         }
 
         const data = localTruckData[truckId];
+        
+        if (data.isPdf) {
+            container.innerHTML = `<iframe src="${data.url}" width="100%" height="600px" style="border:none;"></iframe>`;
+            return;
+        }
+
         let html = '<table class="excel-table"><thead><tr>';
         
-        // 1. Generate original headers, then append the 3 checklist columns
         data[0].forEach(header => { html += `<th>${header || ''}</th>`; });
         html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
-        // 2. Loop through rows, adding original data + 3 checkboxes per row
         for(let i = 1; i < data.length; i++) {
             if(data[i].length === 0) continue; 
             
@@ -450,11 +467,8 @@
         container.innerHTML = html;
     }
     
-    // NEW: Function to dynamically shrink route pins when zooming out
     function scaleRouteMarkers(targetMap) {
         const zoom = targetMap.getZoom();
-        
-        // Formula: Size shrinks smoothly from 100% at zoom 14, down to 40% at zoom 9.
         const scale = Math.max(0.4, Math.min(1, (zoom - 9) / 5)); 
         
         Object.values(routeMarkers).forEach(markerArray => {
@@ -462,8 +476,8 @@
                 const svg = m.getElement().querySelector('svg');
                 if (svg) {
                     svg.style.transform = `scale(${scale})`;
-                    svg.style.transformOrigin = 'bottom center'; // Keeps the pin tip anchored exactly on the location
-                    svg.style.transition = 'transform 0.1s ease'; // Adds a smooth visual animation
+                    svg.style.transformOrigin = 'bottom center';
+                    svg.style.transition = 'transform 0.1s ease'; 
                 }
             });
         });
@@ -515,7 +529,6 @@
             apiCall('/settings/race_logo')
         ]);
 
-        // Setup Banner
         $('banner-race-name').innerText = settings.value; 
         $('event_name_input').value = settings.value;
         if(raceLogo.value && raceLogo.value !== 'CRS Event') {
@@ -527,7 +540,6 @@
             $('event_logo_input').value = '';
         }
 
-        // Setup Icons (With backwards compatibility for old string-only icons)
         globalIcons = icons.items.map(i => typeof i === 'string' ? {name: "Legacy Icon", url: i} : i); 
         globalRoutes = routes.items;
 
@@ -541,20 +553,17 @@
 
         $('route_list').innerHTML = '';
         globalRoutes.forEach((url, i) => {
-            // Show just the clean filename instead of an ugly slice of the URL
             const fileName = url.split('/').pop();
             $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span>🗺️ ${fileName}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
             drawRouteOnMap(url, `route-${i}`, map);
         });
 
-        // Delete "ghost" map lines and pins if an admin removes a route from the list
         let excessIdx = globalRoutes.length;
         while (map && map.getSource(`route-${excessIdx}`)) {
             if (map.getLayer(`route-${excessIdx}-line`)) map.removeLayer(`route-${excessIdx}-line`);
-            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); // Fallback
+            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); 
             map.removeSource(`route-${excessIdx}`);
             
-            // Delete the physical waypoint pins
             if (routeMarkers[`route-${excessIdx}`]) {
                 routeMarkers[`route-${excessIdx}`].forEach(m => m.remove());
                 delete routeMarkers[`route-${excessIdx}`];
@@ -564,13 +573,11 @@
 
         globalLocations = locations; globalTrucks = trucks;
         
-        // Build map markers
         locations.forEach(loc => buildMarker(loc, 'loc', map));
         trucks.forEach(trk => buildMarker(trk, 'trk', map));
         
         renderSidebarLists();
         
-        // Populate Admin Edit Dropdowns
         if($('manage_loc_select')) {
             $('manage_loc_select').innerHTML = '<option value="">Select...</option>';
             locations.forEach(l => $('manage_loc_select').innerHTML += `<option value="${l.id}">${l.name}</option>`);
@@ -592,7 +599,6 @@
             trucks.forEach(t => { $('remove_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
         }
 
-        // NEW: Populate the Truck Location dropdown
         if($('trk_loc')) {
             $('trk_loc').innerHTML = '<option value="">Select Location...</option>';
             locations.forEach(l => $('trk_loc').innerHTML += `<option value="${l.id}">${l.name} - ${l.type}</option>`);
@@ -646,15 +652,12 @@
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
         
         try {
-            // 1. Fetch the GeoJSON data directly
             const response = await fetch(url);
             const data = await response.json();
 
-            // 2. Separate paths (lines) and waypoints (points)
             const lines = { type: 'FeatureCollection', features: data.features.filter(f => f.geometry.type.includes('LineString')) };
             const points = data.features.filter(f => f.geometry.type === 'Point');
 
-            // 3. Draw the route paths on the canvas
             if (!targetMap.getSource(layerId)) {
                 targetMap.addSource(layerId, { type: 'geojson', data: lines });
                 targetMap.addLayer({ 
@@ -668,36 +671,31 @@
                 targetMap.getSource(layerId).setData(lines);
             }
 
-            // 4. Clear old waypoint markers for this route if they exist
             if (routeMarkers[layerId]) {
                 routeMarkers[layerId].forEach(m => m.remove());
             }
             routeMarkers[layerId] = [];
 
-            // 5. Draw waypoints as interactive Mapbox Pins
             points.forEach((pt, index) => {
                 const coords = pt.geometry.coordinates;
                 const name = pt.properties.name || `Waypoint ${index + 1}`;
                 const desc = pt.properties.description || '';
                 
-                // Smart color coding to differentiate waypoint types automatically
                 const nameLower = name.toLowerCase();
-                let pinColor = '#8e8e93'; // Default Gray for generic points
-                if(nameLower.includes('start')) pinColor = '#34c759'; // Green
-                else if(nameLower.includes('finish') || nameLower.includes('end')) pinColor = '#ff3b30'; // Red
-                else if(nameLower.includes('water') || nameLower.includes('hydration') || nameLower.includes('aid')) pinColor = '#007bff'; // Blue
-                else if(nameLower.includes('km') || nameLower.includes('mile') || nameLower.includes('marker')) pinColor = '#ffcc00'; // Yellow
-                else if(nameLower.includes('medical') || nameLower.includes('first aid')) pinColor = '#ff3b30'; // Red
+                let pinColor = '#8e8e93'; 
+                if(nameLower.includes('start')) pinColor = '#34c759'; 
+                else if(nameLower.includes('finish') || nameLower.includes('end')) pinColor = '#ff3b30'; 
+                else if(nameLower.includes('water') || nameLower.includes('hydration') || nameLower.includes('aid')) pinColor = '#007bff'; 
+                else if(nameLower.includes('km') || nameLower.includes('mile') || nameLower.includes('marker')) pinColor = '#ffcc00'; 
+                else if(nameLower.includes('medical') || nameLower.includes('first aid')) pinColor = '#ff3b30'; 
                 
                 let popupHtml = `<b>${name}</b>`;
                 if (desc) popupHtml += `<br><span style="font-size:0.85rem;color:#666;">${desc}</span>`;
                 
-                // Add Driver Navigation Link if viewed on the Driver Portal
                 if (window.isDriverApp) {
                     popupHtml += `<br><a href="https://www.google.com/maps/dir/?api=1&destination=${coords[1]},${coords[0]}" target="_blank" style="display:block; margin-top:10px; padding:8px; background:#007bff; color:white; text-align:center; text-decoration:none; border-radius:4px; font-weight:bold;">🧭 Navigate Here</a>`;
                 }
 
-                // Spawn the pin
                 const marker = new mapboxgl.Marker({ color: pinColor })
                     .setLngLat([coords[0], coords[1]])
                     .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
@@ -706,14 +704,12 @@
                 routeMarkers[layerId].push(marker);
             });
 
-            // NEW: Apply the scale math instantly after spawning the pins
             scaleRouteMarkers(targetMap);
         } catch (err) {
             console.error("Failed to render interactive route data:", err);
         }
     }
     
-
     function renderSidebarLists() {
         const trkList = $('list-trucks');
         const locList = $('list-locations');
@@ -770,11 +766,11 @@
     function setTrkMode(mode) {
         if(mode === 'add') {
             $('trk-tab-add').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').className = 'btn btn-inline'; $('trk-tab-manage').style.background = '#ddd'; $('trk-manage-selector').style.display = 'none'; $('truckForm').reset(); $('btn-save-trk').style.display = 'block'; $('btn-update-trk').style.display = 'none';
-            $('trk_loc_label').innerText = "Initial Location:"; // Updates label text
+            $('trk_loc_label').innerText = "Initial Location:"; 
             updateIconPreview('trk');
         } else {
             $('trk-tab-manage').className = 'btn btn-inline btn-blue'; $('trk-tab-manage').style.background = ''; $('trk-tab-add').className = 'btn btn-inline'; $('trk-tab-add').style.background = '#ddd'; $('trk-manage-selector').style.display = 'block'; $('truckForm').reset(); $('btn-save-trk').style.display = 'none';
-            $('trk_loc_label').innerText = "Current Location:"; // Updates label text
+            $('trk_loc_label').innerText = "Current Location:"; 
             updateIconPreview('trk');
         }
     }
@@ -815,13 +811,11 @@
         let file = fileInput.files[0];
         const ext = file.name.split('.').pop().toLowerCase();
         
-        // Generate a mathematically unique filename with no spaces to prevent cache bugs
         const newFileName = `route_${Date.now()}.json`;
 
         try {
             let uploadData = file;
             
-            // MAGIC STEP: Convert KML/KMZ to GeoJSON
             if (ext === 'kml' || ext === 'kmz') {
                 let kmlText = "";
                 if (ext === 'kmz') {
@@ -838,7 +832,6 @@
                 uploadData = new Blob([JSON.stringify(geojsonObj)], { type: 'application/json' });
             }
 
-            // Standard Upload Process using the safe filename
             const formData = new FormData();
             formData.append("file", uploadData, newFileName);
 
@@ -920,24 +913,23 @@
     }
 
     async function submitTruck() {
-        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
+        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
         alert("Truck created!"); $('truckForm').reset(); loadData();
     }
 
     function loadTrkForEdit() {
         const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
         if(!trk) return;
-        $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || ""; $('trk_excel').value = trk.resource_excel_url;
+        $('edit_trk_id').value = trk.id; $('trk_name').value = trk.truck_name; $('trk_plate').value = trk.license_plate; $('trk_purpose').value = trk.purpose; $('trk_status').value = trk.status; $('trk_fuel').value = trk.start_fuel; $('trk_icon_select').value = trk.icon_url || "";
         
-        $('trk_loc').value = trk.current_location_id || ""; // NEW: Loads current location
+        $('trk_loc').value = trk.current_location_id || ""; 
         
         $('btn-save-trk').style.display = 'none'; $('btn-update-trk').style.display = 'block';
         updateIconPreview('trk');
     }
 
     async function updateTruck() {
-        // NEW: Added location_id to the payload
-        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: $('trk_excel').value });
+        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
         alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
 
@@ -954,16 +946,14 @@
         }
     }
 
-    // AUTO-REFRESH: Update the dashboard every 30 seconds
     setInterval(() => {
-        // SAFETY CHECK: Only refresh if the admin is NOT actively editing a truck or location
         const isEditingLoc = $('edit_loc_id') && $('edit_loc_id').value !== "";
         const isEditingTrk = $('edit_trk_id') && $('edit_trk_id').value !== "";
         
         if (!isEditingLoc && !isEditingTrk) {
             loadData();
         }
-    }, 30000); // 30000 milliseconds = 30 seconds
+    }, 30000); 
 </script>
 </body>
 </html>
