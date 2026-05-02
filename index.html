@@ -252,24 +252,31 @@
         </div>
     </div>
 
+    <!-- SCHEDULE VIEW -->
     <div id="schedule-view" class="view-section">
         <div class="card" style="max-width: 100%;">
             <h2>Race Schedule</h2>
-            <div id="schedule-empty">
-                <p style="color: #666;"><i>No race schedule loaded. Please add one in the Settings tab.</i></p>
+            <p style="color: #666; font-size: 0.9rem;">Select a master schedule below to view it.</p>
+            
+            <select id="schedule_select" onchange="renderSchedule()" style="max-width: 400px; padding: 10px; font-size: 16px;">
+                <option value="">-- Select Schedule --</option>
+            </select>
+            
+            <div id="schedule-container" style="overflow-x: auto; margin-top: 15px; max-height: 60vh;">
+                <p style="color: #666;"><i>No schedule selected. Please select one from the dropdown.</i></p>
             </div>
-            <div id="schedule-table-container" style="overflow-x: auto; max-height: 600px;"></div>
         </div>
     </div>
 
     <div id="resources-view" class="view-section">
         <div class="card" style="max-width: 100%;">
             <h2>Truck Resource Sheets</h2>
+            <p style="color: #666; font-size: 0.9rem;">Upload a browser-session file to inspect it.</p>
             <label>Select Truck to View:</label>
             <select id="view_resource_truck" onchange="renderTruckResource()" style="max-width: 300px;">
                 <option value="">-- Choose a Truck --</option>
             </select>
-            <div id="resource-table-container" style="overflow-x: auto; margin-top: 15px; max-height: 600px;">
+            <div id="resource-table-container" style="overflow-x: auto; margin-top: 15px; max-height: 60vh;">
                 <p style="color: #666;"><i>Select a truck to view its interactive loadout.</i></p>
             </div>
         </div>
@@ -306,6 +313,7 @@
             <!-- TOP RIGHT: Race Routes & Excel Uploads -->
             <div class="card">
                 <h2>Routes & Resources</h2>
+                
                 <h3>Race Routes</h3>
                 <p style="font-size:0.85rem; color:#666;">Upload Mapbox GeoJSON or Google Earth KML/KMZ files.</p>
                 <label>Upload New Route File:</label>
@@ -317,13 +325,21 @@
 
                 <hr style="margin:20px 0; border:1px solid #eee;">
                 
-                <h3>Uploads (Browser Session)</h3>
-                <label>Upload Master Race Schedule (.xlsx, .pdf):</label>
+                <h3>Race Schedules</h3>
+                <p style="font-size:0.85rem; color:#666;">Upload Master Race Schedules (.xlsx, .xls, .pdf).</p>
+                <label>Schedule Name:</label>
+                <input type="text" id="new_schedule_name" placeholder="e.g. Saturday Master Logistics">
+                <label>Upload File:</label>
                 <div style="display:flex; gap:10px; align-items: center;">
                     <input type="file" id="upload_schedule_file" accept=".xlsx, .xls, .pdf" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
-                    <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadSchedule()">Load</button>
+                    <button class="btn btn-blue" style="margin-top:0; padding: 6px 12px; width: auto; font-size: 13px;" onclick="uploadSchedule()">Upload</button>
                 </div>
+                <ul id="schedule_list" class="list-group" style="margin-top:10px;"></ul>
 
+                <hr style="margin:20px 0; border:1px solid #eee;">
+
+                <h3>Browser Session Lists</h3>
+                <p style="font-size:0.85rem; color:#666;">These are not saved to the server.</p>
                 <label style="margin-top: 15px;">Upload Truck Resource List (.xlsx, .pdf):</label>
                 <div style="display:flex; gap:10px; align-items: center;">
                     <select id="upload_resource_truck" style="flex: 1; padding: 12px;"><option value="">Select Truck...</option></select>
@@ -363,8 +379,9 @@
         return res.json();
     }
 
-    let globalTrucks = [], globalLocations = [], globalIcons = [], globalRoutes = [], markers = [], routeMarkers = {};
+    let globalTrucks = [], globalLocations = [], globalIcons = [], globalRoutes = [], globalSchedules = [], markers = [], routeMarkers = {};
     let map, adminMap, adminMarker;
+    let localTruckData = {}; 
 
     apiCall('/config/').then(config => {
         $('loading-overlay').style.display = 'none';
@@ -378,34 +395,197 @@
         map.on('load', () => loadData());
     });
 
-    let localTruckData = {}; 
+    async function loadData() {
+        markers.forEach(m => m.remove()); markers = [];
 
-    function uploadSchedule() {
-        const file = $('upload_schedule_file').files[0];
-        if(!file) return alert("Please select a file.");
+        // Added the fetch for the schedule list setting
+        const [settings, drivers, locations, trucks, logs, icons, routes, raceLogo, schedules] = await Promise.all([
+            apiCall('/settings/race_name'), apiCall('/drivers/'), apiCall('/locations/'), 
+            apiCall('/trucks/'), apiCall('/activity-logs/'), 
+            apiCall('/settings/list/icons'), apiCall('/settings/list/routes'),
+            apiCall('/settings/race_logo'),
+            apiCall('/settings/list/schedules').catch(() => ({ items: [] }))
+        ]);
+
+        globalLocations = locations; 
+        globalTrucks = trucks;
+        globalIcons = icons.items.map(i => typeof i === 'string' ? {name: "Legacy Icon", url: i} : i); 
+        globalRoutes = routes.items;
+        globalSchedules = schedules.items || [];
+
+        // 1. Setup Banner
+        $('banner-race-name').innerText = settings.value; 
+        $('event_name_input').value = settings.value;
+        if(raceLogo.value && raceLogo.value !== 'CRS Event') {
+            $('banner-race-logo').src = raceLogo.value;
+            $('banner-race-logo').style.display = 'block';
+            $('event_logo_input').value = raceLogo.value;
+        } else {
+            $('banner-race-logo').style.display = 'none';
+            $('event_logo_input').value = '';
+        }
+
+        // 2. Setup Icons
+        ['loc_icon_select', 'trk_icon_select'].forEach(id => {
+            $(id).innerHTML = '<option value="">Default Teardrop</option>';
+            globalIcons.forEach(icon => $(id).innerHTML += `<option value="${icon.url}">${icon.name}</option>`);
+        });
+        $('icon_list').innerHTML = '';
+        globalIcons.forEach((icon, i) => $('icon_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span><img src="${icon.url}" style="width:24px; height:24px; object-fit:contain; vertical-align:middle; margin-right:10px;"> <b>${icon.name}</b></span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('icons', ${i})">X</button></li>`);
+
+        // 3. Setup Routes
+        $('route_list').innerHTML = '';
+        globalRoutes.forEach((url, i) => {
+            const fileName = url.split('/').pop();
+            $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span>🗺️ ${fileName}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
+            drawRouteOnMap(url, `route-${i}`, map);
+        });
+
+        let excessIdx = globalRoutes.length;
+        while (map && map.getSource(`route-${excessIdx}`)) {
+            if (map.getLayer(`route-${excessIdx}-line`)) map.removeLayer(`route-${excessIdx}-line`);
+            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); 
+            map.removeSource(`route-${excessIdx}`);
+            if (routeMarkers[`route-${excessIdx}`]) { routeMarkers[`route-${excessIdx}`].forEach(m => m.remove()); delete routeMarkers[`route-${excessIdx}`]; }
+            excessIdx++;
+        }
+
+        // 4. Setup Schedules
+        $('schedule_list').innerHTML = '';
+        $('schedule_select').innerHTML = '<option value="">-- Select Schedule --</option>';
+
+        globalSchedules.forEach((sch, i) => {
+            const url = typeof sch === 'string' ? sch : sch.url;
+            const name = sch.name || `Schedule ${i + 1}`;
+            
+            // Populate the list in the Settings tab
+            $('schedule_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span>📄 ${name}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('schedules', ${i})">X</button></li>`;
+            
+            // Populate the dropdown in the Schedule View tab
+            $('schedule_select').innerHTML += `<option value="${url}">${name}</option>`;
+        });
         
-        if (file.name.toLowerCase().endsWith('.pdf')) {
-            const fileURL = URL.createObjectURL(file);
-            $('schedule-empty').style.display = 'none';
-            $('schedule-table-container').innerHTML = `<iframe src="${fileURL}" width="100%" height="600px" style="border:none;"></iframe>`;
-            alert("Schedule loaded into dashboard!");
-            $('upload_schedule_file').value = "";
+        // 5. Render Map Markers & Sidebars
+        locations.forEach(loc => buildMarker(loc, 'loc', map));
+        trucks.forEach(trk => buildMarker(trk, 'trk', map));
+        renderSidebarLists();
+        
+        // 6. Populate Dropdowns
+        if($('manage_loc_select')) {
+            $('manage_loc_select').innerHTML = '<option value="">Select...</option>';
+            locations.forEach(l => $('manage_loc_select').innerHTML += `<option value="${l.id}">${l.name}</option>`);
+        }
+        if($('manage_trk_select')) {
+            $('manage_trk_select').innerHTML = '<option value="">Select...</option>';
+            trucks.forEach(t => $('manage_trk_select').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
+        }
+        if($('remove_driver')) {
+            $('remove_driver').innerHTML = '<option value="">Select...</option>';
+            drivers.forEach(d => { $('remove_driver').innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; });
+        }
+        if($('remove_location')) {
+            $('remove_location').innerHTML = '<option value="">Select...</option>';
+            locations.forEach(l => { $('remove_location').innerHTML += `<option value="${l.id}">${l.name}</option>`; });
+        }
+        if($('remove_truck')) {
+            $('remove_truck').innerHTML = '<option value="">Select...</option>';
+            trucks.forEach(t => { $('remove_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
+        }
+        if($('trk_loc')) {
+            $('trk_loc').innerHTML = '<option value="">Select Location...</option>';
+            locations.forEach(l => $('trk_loc').innerHTML += `<option value="${l.id}">${l.name} - ${l.type}</option>`);
+        }
+        if($('upload_resource_truck')) {
+            $('upload_resource_truck').innerHTML = '<option value="">Select...</option>';
+            $('view_resource_truck').innerHTML = '<option value="">-- Choose a Truck --</option>';
+            trucks.forEach(t => { 
+                $('upload_resource_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+                $('view_resource_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
+            });
+        }
+
+        if($('activity-table')) {
+            $('activity-table').innerHTML = '';
+            logs.forEach(log => {
+                const date = new Date(log.timestamp).toLocaleString();
+                $('activity-table').innerHTML += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
+            });
+        }
+    }
+
+    // --- SCHEDULE & RESOURCE VIEWERS ---
+    
+    async function uploadSchedule() {
+        const name = $('new_schedule_name').value;
+        const fileInput = $('upload_schedule_file');
+        
+        if(!name) return alert("Please provide a name for this schedule.");
+        if(fileInput.files.length === 0) return alert("Please select a file to upload.");
+
+        $('loading-overlay').style.display = 'flex';
+        let file = fileInput.files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
+        const newFileName = `schedule_${Date.now()}.${ext}`;
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file, newFileName);
+
+            const uploadRes = await fetch(`${API_URL}/upload-schedule/`, {
+                method: "POST",
+                body: formData
+            });
+            if (!uploadRes.ok) throw new Error("Upload failed. Ensure backend is running.");
+            
+            const data = await uploadRes.json();
+            const absoluteUrl = API_URL + data.url; 
+            
+            globalSchedules.push({ name: name, url: absoluteUrl });
+            await apiCall('/settings/list/schedules', 'PUT', { items: globalSchedules });
+            
+            loadData();
+            $('new_schedule_name').value = '';
+            fileInput.value = ''; 
+            alert("Schedule uploaded and saved successfully!");
+            
+        } catch (err) {
+            console.error(err);
+            alert("Error processing schedule: " + err.message);
+        } finally {
+            $('loading-overlay').style.display = 'none';
+        }
+    }
+
+    async function renderSchedule() {
+        const url = $('schedule_select').value;
+        const container = $('schedule-container');
+        
+        if(!url) { 
+            container.innerHTML = '<p style="color: #666;"><i>No schedule selected. Please select one from the dropdown.</i></p>'; 
+            return; 
+        }
+
+        container.innerHTML = '<p>Loading schedule...</p>';
+        
+        // If it's a PDF, render it using an iframe
+        if (url.toLowerCase().endsWith('.pdf')) {
+            container.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = e => {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+        // If it's an Excel sheet, fetch it over the network and render it to HTML
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
             const htmlTable = XLSX.utils.sheet_to_html(workbook.Sheets[workbook.SheetNames[0]]);
             
-            $('schedule-empty').style.display = 'none';
-            const container = $('schedule-table-container');
             container.innerHTML = htmlTable;
             container.querySelector('table').classList.add('excel-table'); 
-            alert("Schedule loaded into dashboard!");
-            $('upload_schedule_file').value = "";
-        };
-        reader.readAsArrayBuffer(file);
+        } catch (err) {
+            console.error("Failed to parse Excel schedule:", err);
+            container.innerHTML = '<p style="color: red;">Failed to load schedule. Ensure the file is a valid document.</p>';
+        }
     }
 
     function uploadTruckResource() {
@@ -418,6 +598,7 @@
             localTruckData[truckId] = { isPdf: true, url: fileURL };
             alert("Truck resources loaded!");
             $('upload_resource_file').value = "";
+            renderTruckResource();
             return;
         }
 
@@ -427,6 +608,7 @@
             localTruckData[truckId] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             alert("Truck resources loaded!");
             $('upload_resource_file').value = "";
+            renderTruckResource();
         };
         reader.readAsArrayBuffer(file);
     }
@@ -436,14 +618,14 @@
         const container = $('resource-table-container');
         
         if(!truckId || !localTruckData[truckId]) {
-            container.innerHTML = '<p style="color: #666;"><i>No resources loaded for this truck yet. Add them in Settings.</i></p>';
+            container.innerHTML = '<p style="color: #666;"><i>No resources loaded for this truck yet. Upload a list in the Settings tab.</i></p>';
             return;
         }
 
         const data = localTruckData[truckId];
         
         if (data.isPdf) {
-            container.innerHTML = `<iframe src="${data.url}" width="100%" height="600px" style="border:none;"></iframe>`;
+            container.innerHTML = `<iframe src="${data.url}" width="100%" height="600px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
             return;
         }
 
@@ -466,162 +648,19 @@
         html += '</tbody></table>';
         container.innerHTML = html;
     }
-    
-    function scaleRouteMarkers(targetMap) {
-        const zoom = targetMap.getZoom();
-        const scale = Math.max(0.4, Math.min(1, (zoom - 9) / 5)); 
+
+    async function removeListSetting(type, index) { 
+        if(type==='icons') globalIcons.splice(index, 1); 
+        else if(type==='routes') globalRoutes.splice(index, 1);
+        else if(type==='schedules') globalSchedules.splice(index, 1);
         
-        Object.values(routeMarkers).forEach(markerArray => {
-            markerArray.forEach(m => {
-                const svg = m.getElement().querySelector('svg');
-                if (svg) {
-                    svg.style.transform = `scale(${scale})`;
-                    svg.style.transformOrigin = 'bottom center';
-                    svg.style.transition = 'transform 0.1s ease'; 
-                }
-            });
-        });
+        const payload = type==='icons' ? globalIcons : type==='routes' ? globalRoutes : globalSchedules;
+        await apiCall(`/settings/list/${type}`, 'PUT', { items: payload }); 
+        loadData(); 
     }
 
-    function setStyle(targetMap, styleName, mapPrefix) {
-        targetMap.setStyle(`mapbox://styles/mapbox/${styleName}`);
-        $(`${mapPrefix}-street-btn`).classList.remove('active');
-        $(`${mapPrefix}-sat-btn`).classList.remove('active');
-        $(styleName.includes('satellite') ? `${mapPrefix}-sat-btn` : `${mapPrefix}-street-btn`).classList.add('active');
-    }
-    
-    function switchTab(tabId, btn) {
-        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
-        $(tabId).style.display = 'block';
-        if(btn) btn.classList.add('active');
-        if(tabId === 'dashboard-view' && map) setTimeout(() => map.resize(), 100);
-        if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
-    }
 
-    function geocodeAddress(searchId, latId, lngId) {
-        const address = $(searchId).value;
-        if (!address) return;
-        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.features && data.features.length > 0) {
-                    const [lng, lat] = data.features[0].center;
-                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
-                    setAdminMarker(lat, lng, latId, lngId);
-                }
-            });
-    }
-
-    function setAdminMarker(lat, lng, latId, lngId) {
-        $(latId).value = lat.toFixed(6); $(lngId).value = lng.toFixed(6);
-        if (adminMarker) adminMarker.remove(); 
-        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
-    }
-
-    async function loadData() {
-        markers.forEach(m => m.remove()); markers = [];
-
-        const [settings, drivers, locations, trucks, logs, icons, routes, raceLogo] = await Promise.all([
-            apiCall('/settings/race_name'), apiCall('/drivers/'), apiCall('/locations/'), 
-            apiCall('/trucks/'), apiCall('/activity-logs/'), 
-            apiCall('/settings/list/icons'), apiCall('/settings/list/routes'),
-            apiCall('/settings/race_logo')
-        ]);
-
-        $('banner-race-name').innerText = settings.value; 
-        $('event_name_input').value = settings.value;
-        if(raceLogo.value && raceLogo.value !== 'CRS Event') {
-            $('banner-race-logo').src = raceLogo.value;
-            $('banner-race-logo').style.display = 'block';
-            $('event_logo_input').value = raceLogo.value;
-        } else {
-            $('banner-race-logo').style.display = 'none';
-            $('event_logo_input').value = '';
-        }
-
-        globalIcons = icons.items.map(i => typeof i === 'string' ? {name: "Legacy Icon", url: i} : i); 
-        globalRoutes = routes.items;
-
-        ['loc_icon_select', 'trk_icon_select'].forEach(id => {
-            $(id).innerHTML = '<option value="">Default Teardrop</option>';
-            globalIcons.forEach(icon => $(id).innerHTML += `<option value="${icon.url}">${icon.name}</option>`);
-        });
-        
-        $('icon_list').innerHTML = '';
-        globalIcons.forEach((icon, i) => $('icon_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span><img src="${icon.url}" style="width:24px; height:24px; object-fit:contain; vertical-align:middle; margin-right:10px;"> <b>${icon.name}</b></span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('icons', ${i})">X</button></li>`);
-
-        $('route_list').innerHTML = '';
-        globalRoutes.forEach((url, i) => {
-            const fileName = url.split('/').pop();
-            $('route_list').innerHTML += `<li class="list-item" style="display:flex; justify-content:space-between; align-items:center;"><span>🗺️ ${fileName}</span> <button class="btn-red" style="padding:2px 5px;" onclick="removeListSetting('routes', ${i})">X</button></li>`;
-            drawRouteOnMap(url, `route-${i}`, map);
-        });
-
-        let excessIdx = globalRoutes.length;
-        while (map && map.getSource(`route-${excessIdx}`)) {
-            if (map.getLayer(`route-${excessIdx}-line`)) map.removeLayer(`route-${excessIdx}-line`);
-            if (map.getLayer(`route-${excessIdx}`)) map.removeLayer(`route-${excessIdx}`); 
-            map.removeSource(`route-${excessIdx}`);
-            
-            if (routeMarkers[`route-${excessIdx}`]) {
-                routeMarkers[`route-${excessIdx}`].forEach(m => m.remove());
-                delete routeMarkers[`route-${excessIdx}`];
-            }
-            excessIdx++;
-        }
-
-        globalLocations = locations; globalTrucks = trucks;
-        
-        locations.forEach(loc => buildMarker(loc, 'loc', map));
-        trucks.forEach(trk => buildMarker(trk, 'trk', map));
-        
-        renderSidebarLists();
-        
-        if($('manage_loc_select')) {
-            $('manage_loc_select').innerHTML = '<option value="">Select...</option>';
-            locations.forEach(l => $('manage_loc_select').innerHTML += `<option value="${l.id}">${l.name}</option>`);
-        }
-        if($('manage_trk_select')) {
-            $('manage_trk_select').innerHTML = '<option value="">Select...</option>';
-            trucks.forEach(t => $('manage_trk_select').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`);
-        }
-        if($('remove_driver')) {
-            $('remove_driver').innerHTML = '<option value="">Select...</option>';
-            drivers.forEach(d => { $('remove_driver').innerHTML += `<option value="${d.id}">${d.first_name} ${d.last_initial}.</option>`; });
-        }
-        if($('remove_location')) {
-            $('remove_location').innerHTML = '<option value="">Select...</option>';
-            locations.forEach(l => { $('remove_location').innerHTML += `<option value="${l.id}">${l.name}</option>`; });
-        }
-        if($('remove_truck')) {
-            $('remove_truck').innerHTML = '<option value="">Select...</option>';
-            trucks.forEach(t => { $('remove_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`; });
-        }
-
-        if($('trk_loc')) {
-            $('trk_loc').innerHTML = '<option value="">Select Location...</option>';
-            locations.forEach(l => $('trk_loc').innerHTML += `<option value="${l.id}">${l.name} - ${l.type}</option>`);
-        }
-
-        if($('upload_resource_truck')) {
-            $('upload_resource_truck').innerHTML = '<option value="">Select...</option>';
-            $('view_resource_truck').innerHTML = '<option value="">-- Choose a Truck --</option>';
-            
-            trucks.forEach(t => { 
-                $('upload_resource_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
-                $('view_resource_truck').innerHTML += `<option value="${t.id}">${t.truck_name}</option>`;
-            });
-        }
-
-        if($('activity-table')) {
-            $('activity-table').innerHTML = '';
-            logs.forEach(log => {
-                const date = new Date(log.timestamp).toLocaleString();
-                $('activity-table').innerHTML += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
-            });
-        }
-    }
+    // --- MAP BUILDING LOGIC ---
 
     function buildMarker(entity, type, targetMap) {
         if (entity.lat === null) return;
@@ -710,6 +749,41 @@
         }
     }
     
+    function scaleRouteMarkers(targetMap) {
+        const zoom = targetMap.getZoom();
+        const scale = Math.max(0.4, Math.min(1, (zoom - 9) / 5)); 
+        
+        Object.values(routeMarkers).forEach(markerArray => {
+            markerArray.forEach(m => {
+                const svg = m.getElement().querySelector('svg');
+                if (svg) {
+                    svg.style.transform = `scale(${scale})`;
+                    svg.style.transformOrigin = 'bottom center';
+                    svg.style.transition = 'transform 0.1s ease'; 
+                }
+            });
+        });
+    }
+
+    function setStyle(targetMap, styleName, mapPrefix) {
+        targetMap.setStyle(`mapbox://styles/mapbox/${styleName}`);
+        $(`${mapPrefix}-street-btn`).classList.remove('active');
+        $(`${mapPrefix}-sat-btn`).classList.remove('active');
+        $(styleName.includes('satellite') ? `${mapPrefix}-sat-btn` : `${mapPrefix}-street-btn`).classList.add('active');
+    }
+    
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        $(tabId).style.display = 'block';
+        if(btn) btn.classList.add('active');
+        if(tabId === 'dashboard-view' && map) setTimeout(() => map.resize(), 100);
+        if(tabId === 'admin-view' && adminMap) setTimeout(() => adminMap.resize(), 100);
+    }
+
+
+    // --- DATA SUBMISSION & FORM LOGIC ---
+
     function renderSidebarLists() {
         const trkList = $('list-trucks');
         const locList = $('list-locations');
@@ -754,7 +828,25 @@
         else if (type === 'trk' && globalTrucks[index]) globalTrucks[index].markerRef.togglePopup();
     }
 
-    // --- TAB MANAGEMENT ---
+    function resetLocForm() {
+        $('locationForm').reset(); 
+        $('edit_loc_id').value = ""; 
+        $('loc_desc_wrapper').style.display = 'none';
+        
+        if($('loc-manage-selector').style.display === 'block') { 
+            $('btn-save-loc').style.display = 'none'; 
+            $('btn-update-loc').style.display = 'block'; 
+            $('btn-update-loc').style.opacity = '0.5';   
+            $('btn-update-loc').style.cursor = 'not-allowed';
+        } else { 
+            $('btn-save-loc').style.display = 'block'; 
+            $('btn-update-loc').style.display = 'none'; 
+        }
+        
+        if (adminMarker) adminMarker.remove();
+        updateIconPreview('loc');
+    }
+
     function setLocMode(mode) {
         if(mode === 'add') {
             $('loc-tab-add').className = 'btn btn-inline btn-blue'; 
@@ -770,6 +862,36 @@
             $('loc-manage-selector').style.display = 'block'; 
             resetLocForm(); 
         }
+    }
+
+    function loadLocForEdit() {
+        const loc = globalLocations.find(l => l.id == $('manage_loc_select').value);
+        if(!loc) { resetLocForm(); return; }
+        
+        $('edit_loc_id').value = loc.id; 
+        $('loc_name').value = loc.name; 
+        $('loc_type').value = loc.type; 
+        $('loc_icon_select').value = loc.icon_url || "";
+        $('loc_lat').value = loc.lat; 
+        $('loc_lng').value = loc.lng;
+        
+        if(loc.lat !== null && loc.lng !== null) { 
+            adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 }); 
+            setAdminMarker(loc.lat, loc.lng, 'loc_lat', 'loc_lng'); 
+        }
+        
+        $('btn-save-loc').style.display = 'none'; 
+        $('btn-update-loc').style.display = 'block';
+        $('btn-update-loc').style.opacity = '1';
+        $('btn-update-loc').style.cursor = 'pointer';
+        
+        updateIconPreview('loc');
+    }
+
+    async function updateLocation() {
+        if (!$('edit_loc_id').value) return alert("Please select a location to edit first.");
+        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value) });
+        alert("Location Updated!"); setLocMode('add'); loadData();
     }
 
     function setTrkMode(mode) {
@@ -793,7 +915,6 @@
             $('trk-manage-selector').style.display = 'block'; 
             
             $('btn-save-trk').style.display = 'none';
-            // Show the update button immediately, but dim it to look disabled
             $('btn-update-trk').style.display = 'block'; 
             $('btn-update-trk').style.opacity = '0.5';   
             $('btn-update-trk').style.cursor = 'not-allowed';
@@ -802,7 +923,61 @@
         updateIconPreview('trk');
     }
 
-    // --- DATA SUBMISSION ---
+    function loadTrkForEdit() {
+        const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
+        if(!trk) { 
+            $('truckForm').reset();
+            $('edit_trk_id').value = "";
+            $('btn-update-trk').style.opacity = '0.5';
+            $('btn-update-trk').style.cursor = 'not-allowed';
+            updateIconPreview('trk');
+            return; 
+        }
+        
+        $('edit_trk_id').value = trk.id; 
+        $('trk_name').value = trk.truck_name; 
+        $('trk_plate').value = trk.license_plate; 
+        $('trk_purpose').value = trk.purpose; 
+        $('trk_status').value = trk.status; 
+        $('trk_fuel').value = trk.start_fuel; 
+        $('trk_icon_select').value = trk.icon_url || "";
+        $('trk_loc').value = trk.current_location_id || ""; 
+        
+        $('btn-save-trk').style.display = 'none'; 
+        $('btn-update-trk').style.display = 'block';
+        $('btn-update-trk').style.opacity = '1';
+        $('btn-update-trk').style.cursor = 'pointer';
+        
+        updateIconPreview('trk');
+    }
+
+    async function updateTruck() {
+        if (!$('edit_trk_id').value) return alert("Please select a truck to edit first.");
+        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
+        alert("Truck Updated!"); setTrkMode('add'); loadData();
+    }
+
+    function updateIconPreview(type) {
+        const select = $(`${type}_icon_select`);
+        const img = $(`${type}_preview`);
+        if(select.value) {
+            img.src = select.value;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+    }
+
+    async function submitLocation() {
+        await apiCall('/locations/', 'POST', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value), user: "Admin" });
+        alert("Location saved!"); resetLocForm(); loadData();
+    }
+
+    async function submitTruck() {
+        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
+        alert("Truck created!"); $('truckForm').reset(); loadData();
+    }
+
     async function addIcon() { 
         const name = $('new_icon_name').value;
         const url = $('new_icon_url').value;
@@ -830,98 +1005,6 @@
         alert("Race details updated!");
     }
 
-    async function uploadRoute() {
-        const fileInput = $('new_route_file');
-        if (fileInput.files.length === 0) return alert("Please select a file to upload.");
-        
-        $('loading-overlay').style.display = 'flex';
-        let file = fileInput.files[0];
-        const ext = file.name.split('.').pop().toLowerCase();
-        
-        const newFileName = `route_${Date.now()}.json`;
-
-        try {
-            let uploadData = file;
-            
-            if (ext === 'kml' || ext === 'kmz') {
-                let kmlText = "";
-                if (ext === 'kmz') {
-                    const zip = await JSZip.loadAsync(file);
-                    const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'));
-                    if (!kmlFile) throw new Error("No KML file found inside the KMZ archive.");
-                    kmlText = await kmlFile.async("text");
-                } else {
-                    kmlText = await file.text();
-                }
-
-                const kmlDom = new DOMParser().parseFromString(kmlText, "text/xml");
-                const geojsonObj = toGeoJSON.kml(kmlDom);
-                uploadData = new Blob([JSON.stringify(geojsonObj)], { type: 'application/json' });
-            }
-
-            const formData = new FormData();
-            formData.append("file", uploadData, newFileName);
-
-            const uploadRes = await fetch(`${API_URL}/upload-route/`, {
-                method: "POST",
-                body: formData
-            });
-            if (!uploadRes.ok) throw new Error("Upload failed. Ensure backend is running.");
-            
-            const data = await uploadRes.json();
-            const absoluteUrl = API_URL + data.url; 
-            
-            globalRoutes.push(absoluteUrl);
-            await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes });
-            
-            loadData();
-            fileInput.value = ''; 
-            alert("Route processed and uploaded successfully!");
-            
-        } catch (err) {
-            console.error(err);
-            alert("Error processing route: " + err.message);
-        } finally {
-            $('loading-overlay').style.display = 'none';
-        }
-    }
-    
-    async function removeListSetting(type, index) { 
-        if(type==='icons') globalIcons.splice(index, 1); else globalRoutes.splice(index, 1);
-        await apiCall(`/settings/list/${type}`, 'PUT', { items: type==='icons' ? globalIcons : globalRoutes }); loadData(); 
-    }
-
-    function updateIconPreview(type) {
-        const select = $(`${type}_icon_select`);
-        const img = $(`${type}_preview`);
-        if(select.value) {
-            img.src = select.value;
-            img.style.display = 'block';
-        } else {
-            img.style.display = 'none';
-        }
-    }
-    
-    function resetLocForm() {
-        $('locationForm').reset(); 
-        $('edit_loc_id').value = ""; 
-        $('loc_desc_wrapper').style.display = 'none';
-        
-        if($('loc-manage-selector').style.display === 'block') { 
-            $('btn-save-loc').style.display = 'none'; 
-            // Show the update button immediately, but dim it to look disabled
-            $('btn-update-loc').style.display = 'block'; 
-            $('btn-update-loc').style.opacity = '0.5';   
-            $('btn-update-loc').style.cursor = 'not-allowed';
-        } else { 
-            $('btn-save-loc').style.display = 'block'; 
-            $('btn-update-loc').style.display = 'none'; 
-        }
-        
-        if (adminMarker) adminMarker.remove();
-        updateIconPreview('loc');
-    }
-
     async function removeEntity(type, selectId) {
         const id = $(selectId).value;
         if(!id) return;
@@ -929,87 +1012,6 @@
             await apiCall(`/${type}/${id}`, 'DELETE');
             alert("Deleted successfully."); loadData();
         }
-    }
-
-    async function submitLocation() {
-        await apiCall('/locations/', 'POST', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value), user: "Admin" });
-        alert("Location saved!"); resetLocForm(); loadData();
-    }
-    
-    function loadLocForEdit() {
-        const loc = globalLocations.find(l => l.id == $('manage_loc_select').value);
-        if(!loc) { resetLocForm(); return; }
-        
-        $('edit_loc_id').value = loc.id; 
-        $('loc_name').value = loc.name; 
-        $('loc_type').value = loc.type; 
-        $('loc_icon_select').value = loc.icon_url || "";
-        $('loc_lat').value = loc.lat; 
-        $('loc_lng').value = loc.lng;
-        
-        if(loc.lat !== null && loc.lng !== null) { 
-            adminMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16 }); 
-            setAdminMarker(loc.lat, loc.lng, 'loc_lat', 'loc_lng'); 
-        }
-        
-        // Fully enable the button once a location is successfully selected
-        $('btn-save-loc').style.display = 'none'; 
-        $('btn-update-loc').style.display = 'block';
-        $('btn-update-loc').style.opacity = '1';
-        $('btn-update-loc').style.cursor = 'pointer';
-        
-        updateIconPreview('loc');
-    }
-
-    async function updateLocation() {
-        // Safety catch to prevent submission if the button is clicked while "disabled"
-        if (!$('edit_loc_id').value) return alert("Please select a location to edit first.");
-        
-        await apiCall(`/locations/${$('edit_loc_id').value}`, 'PUT', { name: $('loc_name').value, type: $('loc_type').value, icon_url: $('loc_icon_select').value, lat: parseFloat($('loc_lat').value), lng: parseFloat($('loc_lng').value) });
-        alert("Location Updated!"); setLocMode('add'); loadData();
-    }
-
-    async function submitTruck() {
-        await apiCall('/trucks/', 'POST', { truck_name: $('trk_name').value, license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value||1), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
-        alert("Truck created!"); $('truckForm').reset(); loadData();
-    }
-
-    function loadTrkForEdit() {
-        const trk = globalTrucks.find(t => t.id == $('manage_trk_select').value);
-        if(!trk) { 
-            // Dim the button again if they change the dropdown back to "Select..."
-            $('truckForm').reset();
-            $('edit_trk_id').value = "";
-            $('btn-update-trk').style.opacity = '0.5';
-            $('btn-update-trk').style.cursor = 'not-allowed';
-            updateIconPreview('trk');
-            return; 
-        }
-        
-        $('edit_trk_id').value = trk.id; 
-        $('trk_name').value = trk.truck_name; 
-        $('trk_plate').value = trk.license_plate; 
-        $('trk_purpose').value = trk.purpose; 
-        $('trk_status').value = trk.status; 
-        $('trk_fuel').value = trk.start_fuel; 
-        $('trk_icon_select').value = trk.icon_url || "";
-        $('trk_loc').value = trk.current_location_id || ""; 
-        
-        // Fully enable the button once a truck is successfully selected
-        $('btn-save-trk').style.display = 'none'; 
-        $('btn-update-trk').style.display = 'block';
-        $('btn-update-trk').style.opacity = '1';
-        $('btn-update-trk').style.cursor = 'pointer';
-        
-        updateIconPreview('trk');
-    }
-
-    async function updateTruck() {
-        // Safety catch to prevent submission if the button is clicked while "disabled"
-        if (!$('edit_trk_id').value) return alert("Please select a truck to edit first.");
-        
-        await apiCall(`/trucks/${$('edit_trk_id').value}`, 'PUT', { license_plate: $('trk_plate').value, purpose: $('trk_purpose').value, status: $('trk_status').value, start_fuel: parseFloat($('trk_fuel').value||0), location_id: parseInt($('trk_loc').value), icon_url: $('trk_icon_select').value, resource_excel_url: "" });
-        alert("Truck Updated!"); setTrkMode('add'); loadData();
     }
 
     function checkWipeSlider() {
@@ -1023,6 +1025,26 @@
         } else {
             $('wipe-slider').value = 0; $('wipe-slider').style.display = 'block'; $('btn-wipe').style.display = 'none';
         }
+    }
+
+    function geocodeAddress(searchId, latId, lngId) {
+        const address = $(searchId).value;
+        if (!address) return;
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const [lng, lat] = data.features[0].center;
+                    adminMap.flyTo({ center: [lng, lat], zoom: 18 });
+                    setAdminMarker(lat, lng, latId, lngId);
+                }
+            });
+    }
+
+    function setAdminMarker(lat, lng, latId, lngId) {
+        $(latId).value = lat.toFixed(6); $(lngId).value = lng.toFixed(6);
+        if (adminMarker) adminMarker.remove(); 
+        adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
     }
 
     setInterval(() => {
