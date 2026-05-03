@@ -676,10 +676,21 @@
                 $('trip_location').value = currentTripLoc;
                 
                 if($('schedule_select')) $('schedule_select').value = currentSchedule;
-                if($('resource_truck_select')) $('resource_truck_select').value = currentResourceTrk;
+                if($('resource_truck_select')) {
+                    $('resource_truck_select').value = currentResourceTrk;
+                    
+                    // NEW: Check if the user is currently typing a note
+                    const activeEl = document.activeElement;
+                    const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text' && activeEl.closest('#resource-container');
+                    
+                    // NEW: Only redraw the table if they aren't actively typing, and the tab is open
+                    if (currentResourceTrk && !isTyping && $('resources-view').style.display === 'block') {
+                        renderResource();
+                    }
+                }
             });
         }
-    }, 30000);
+    }, 5000); // Changed to 5 seconds for near real-time syncing
     
     // Initial data load
     loadData();
