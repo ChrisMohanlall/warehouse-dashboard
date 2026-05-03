@@ -669,22 +669,24 @@
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
 
-            // 1. Find the longest row and pad all empty cells to fix formatting
+            // SAFETY FIX 1: Prevent crash if the Excel sheet is completely empty
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p style="color: red;">The document is empty.</p>';
+                return;
+            }
+
             let maxLength = Math.max(...data.map(r => r.length));
             data.forEach(r => { while(r.length < maxLength) r.push(""); });
 
-            // 2. Locate the Notes column (case insensitive)
             let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
 
             let html = '<table class="excel-table"><thead><tr>';
             data[0].forEach(header => { html += `<th>${header || ''}</th>`; });
             html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
-            // 3. Load the saved database state for this truck
             let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
 
             for(let i = 1; i < data.length; i++) {
-                // Skip completely empty Excel rows
                 if(data[i].every(c => c === null || c === undefined || c.toString().trim() === '')) continue; 
                 
                 html += '<tr>';
@@ -692,15 +694,18 @@
                 
                 data[i].forEach((cell, colIdx) => {
                     if (colIdx === notesColIndex) {
-                        // Inject editable note input
-                        let noteVal = rowState.note !== undefined ? rowState.note : (cell || '');
-                        html += `<td><input type="text" value="${noteVal.replace(/"/g, '&quot;')}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
+                        // Extract value, fallback to empty string
+                        let rawVal = rowState.note !== undefined ? rowState.note : (cell !== undefined && cell !== null ? cell : '');
+                        
+                        // SAFETY FIX 2: Force to String and fully sanitize to prevent numeric crashes & HTML injection
+                        let safeNoteVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                        
+                        html += `<td><input type="text" value="${safeNoteVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
                     } else {
-                        html += `<td>${cell || ''}</td>`;
+                        html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
                     }
                 });
                 
-                // Inject Checkboxes mapped to state
                 html += `
                     <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
                     <td style="text-align:center;"><input type="checkbox" ${rowState.c2 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c2', this.checked)" style="width:20px; height:20px;"></td>
