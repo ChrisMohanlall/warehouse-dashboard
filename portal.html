@@ -329,6 +329,12 @@
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
 
+            // SAFETY FIX 1: Prevent crash if the Excel sheet is completely empty
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p style="color: red;">The document is empty.</p>';
+                return;
+            }
+
             let maxLength = Math.max(...data.map(r => r.length));
             data.forEach(r => { while(r.length < maxLength) r.push(""); });
 
@@ -348,10 +354,15 @@
                 
                 data[i].forEach((cell, colIdx) => {
                     if (colIdx === notesColIndex) {
-                        let noteVal = rowState.note !== undefined ? rowState.note : (cell || '');
-                        html += `<td><input type="text" value="${noteVal.replace(/"/g, '&quot;')}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
+                        // Extract value, fallback to empty string
+                        let rawVal = rowState.note !== undefined ? rowState.note : (cell !== undefined && cell !== null ? cell : '');
+                        
+                        // SAFETY FIX 2: Force to String and fully sanitize to prevent numeric crashes & HTML injection
+                        let safeNoteVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                        
+                        html += `<td><input type="text" value="${safeNoteVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
                     } else {
-                        html += `<td>${cell || ''}</td>`;
+                        html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
                     }
                 });
                 
