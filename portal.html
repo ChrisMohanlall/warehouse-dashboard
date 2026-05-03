@@ -31,7 +31,8 @@
         .card { background: var(--surface); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 15px;}
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);}
-        input, select, textarea { width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 16px; background: #fafafa; appearance: none; -webkit-appearance: none; }
+        input:not([type="checkbox"]), select, textarea { width: 100%; padding: 14px; margin-top: 8px; box-sizing: border-box; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 16px; background: #fafafa; appearance: none; -webkit-appearance: none; }
+        input[type="checkbox"] { appearance: auto; -webkit-appearance: auto; accent-color: var(--primary); }
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: var(--surface);}
         
         button.btn { margin-top: 20px; padding: 16px; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; color: white; transition: transform 0.1s; }
@@ -359,48 +360,57 @@
             // Mobile-Safe Binary Fetch using XHR instead of Fetch API
             const arrayBuffer = await new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                // Attach timestamp to break through any stubborn browser caches
                 xhr.open('GET', url + '?t=' + new Date().getTime(), true);
                 xhr.responseType = 'arraybuffer';
-                
-                // Set headers to explicitly bypass cache
                 xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
                 xhr.setRequestHeader('Pragma', 'no-cache');
                 xhr.setRequestHeader('Expires', '0');
 
                 xhr.onload = function(e) {
-                    if (this.status === 200) {
-                        resolve(this.response);
-                    } else {
-                        reject(new Error("XHR Failed with status: " + this.status));
-                    }
+                    if (this.status === 200) { resolve(this.response); } 
+                    else { reject(new Error("XHR Failed with status: " + this.status)); }
                 };
-                xhr.onerror = function() {
-                    reject(new Error("Network Error"));
-                };
+                xhr.onerror = function() { reject(new Error("Network Error")); };
                 xhr.send();
             });
 
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+            let rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
 
-            if (!data || data.length === 0) {
+            if (!rawData || rawData.length === 0) {
                 container.innerHTML = '<p style="color: red;">The document is empty.</p>';
                 return;
             }
 
-            // 1. Find the absolute maximum number of columns across ALL rows
+            // 1. Find the TRUE number of columns based on the header row
+            let headerRow = rawData[0] || [];
             let maxCols = 0;
-            data.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+            for (let j = headerRow.length - 1; j >= 0; j--) {
+                if (headerRow[j] !== undefined && headerRow[j] !== null && headerRow[j].toString().trim() !== "") {
+                    maxCols = j + 1;
+                    break;
+                }
+            }
+            if (maxCols === 0) {
+                rawData.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+            }
 
-            // 2. Pad every row so they identically match maxCols
-            data.forEach(row => { while(row.length < maxCols) row.push(""); });
+            // 2. Clean and enforce perfect table geometry (Matches Desktop App perfectly)
+            let data = [];
+            for (let i = 0; i < rawData.length; i++) {
+                let row = rawData[i].slice(0, maxCols);
+                while(row.length < maxCols) row.push("");
+                
+                // Skip completely empty rows (except the header)
+                if (i > 0 && row.every(c => c.toString().trim() === '')) continue;
+                
+                data.push(row);
+            }
 
-            // 3. Find the "Notes" column (case-insensitive) in the header
+            // 3. Find the "Notes" column
             let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
 
             let html = '<table class="excel-table"><thead><tr>';
-            // Render headers based on maxCols
             for(let j = 0; j < maxCols; j++) { html += `<th>${data[0][j] || ''}</th>`; }
             html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
@@ -408,13 +418,9 @@
             let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
 
             for(let i = 1; i < data.length; i++) {
-                // Skip rows that are entirely blank across all columns
-                if(data[i].every(c => c === "")) continue; 
-                
                 html += '<tr>';
                 let rowState = state[i] || {};
                 
-                // Build the columns using the perfectly squared rows
                 for(let j = 0; j < maxCols; j++) {
                     let cell = data[i][j];
                     if (j === notesColIndex) {
@@ -434,6 +440,7 @@
             }
             html += '</tbody></table>';
             container.innerHTML = html;
+            
         } catch (err) {
             console.error("Failed to parse resource:", err);
             container.innerHTML = '<p style="color: red;">Failed to load resource list. Please check your internet connection.</p>';
