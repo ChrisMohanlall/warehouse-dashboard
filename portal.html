@@ -176,7 +176,17 @@
     let globalSchedules = [];
 
     async function apiCall(endpoint, method = 'GET', body = null) {
-        const options = { method, headers: { 'Content-Type': 'application/json' } };
+        // Bypass PWA caching for all GET requests to ensure live data
+        if (method === 'GET') {
+            endpoint += (endpoint.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+        }
+        
+        const options = { 
+            method, 
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store' 
+        };
+        
         if (body) options.body = JSON.stringify(body);
         const res = await fetch(`${API_URL}${endpoint}`, options);
         if (!res.ok) throw new Error("API Connection Failed");
@@ -285,7 +295,7 @@
 
     // --- SCHEDULE & RESOURCE VIEWERS ---
     
-    function renderSchedule() {
+    async function renderSchedule() {
         const url = $('schedule_select').value;
         const container = $('schedule-container');
         
@@ -293,9 +303,30 @@
             container.innerHTML = ''; 
             return; 
         }
+
+        container.innerHTML = '<p>Loading schedule...</p>';
         
-        container.innerHTML = `<iframe src="${url}" width="100%" height="450px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
-        container.innerHTML += `<button class="btn btn-blue" style="margin-top:10px;" onclick="window.open('${url}', '_blank')">Open Full Screen</button>`;
+        // If it's a PDF, render it using an iframe
+        if (url.toLowerCase().endsWith('.pdf')) {
+            container.innerHTML = `<iframe src="${url}" width="100%" height="450px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
+            container.innerHTML += `<button class="btn btn-blue" style="margin-top:10px;" onclick="window.open('${url}', '_blank')">Open Full Screen</button>`;
+            return;
+        }
+
+        // If it's an Excel sheet, fetch it over the network and render it to HTML
+        try {
+            // Prevent aggressive PWA/Browser caching on the file
+            const response = await fetch(url + '?t=' + new Date().getTime(), { cache: 'no-store' });
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+            const htmlTable = XLSX.utils.sheet_to_html(workbook.Sheets[workbook.SheetNames[0]]);
+            
+            container.innerHTML = htmlTable;
+            container.querySelector('table').classList.add('excel-table'); 
+        } catch (err) {
+            console.error("Failed to parse Excel schedule:", err);
+            container.innerHTML = '<p style="color: red;">Failed to load schedule. Ensure the file is a valid document.</p>';
+        }
     }
 
     async function renderResource() {
@@ -324,54 +355,67 @@
         }
 
         try {
-            const response = await fetch(url);
+            // Prevent aggressive PWA/Browser caching on the file
+            const response = await fetch(url + '?t=' + new Date().getTime(), { cache: 'no-store' });
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
             
-            // Force SheetJS to include empty trailing cells with defval
-            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+            let rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
 
-            if (!data || data.length === 0) {
+            if (!rawData || rawData.length === 0) {
                 container.innerHTML = '<p style="color: red;">The document is empty.</p>';
                 return;
             }
 
-            // 1. Find the absolute maximum number of columns across ALL rows
+            // 1. Find the TRUE number of columns based on the header row, ignoring stray ghost cells to the right.
+            let headerRow = rawData[0] || [];
             let maxCols = 0;
-            data.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+            for (let j = headerRow.length - 1; j >= 0; j--) {
+                if (headerRow[j] !== undefined && headerRow[j] !== null && headerRow[j].toString().trim() !== "") {
+                    maxCols = j + 1;
+                    break;
+                }
+            }
+            // Fallback just in case the header is blank
+            if (maxCols === 0) {
+                rawData.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+            }
 
-            // 2. Pad every row so they identically match maxCols
-            data.forEach(row => { while(row.length < maxCols) row.push(""); });
+            // 2. Clean and enforce perfect table geometry
+            let data = [];
+            for (let i = 0; i < rawData.length; i++) {
+                let row = rawData[i].slice(0, maxCols);
+                while(row.length < maxCols) row.push("");
+                
+                // Skip completely empty rows (except the header)
+                if (i > 0 && row.every(c => c.toString().trim() === '')) continue;
+                
+                data.push(row);
+            }
 
-            // 3. Find the "Notes" column (case-insensitive) in the header
             let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
 
             let html = '<table class="excel-table"><thead><tr>';
-            // Render headers based on maxCols
-            for(let j = 0; j < maxCols; j++) { html += `<th>${data[0][j] || ''}</th>`; }
+            data[0].forEach(header => { html += `<th>${header || ''}</th>`; });
             html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
-            // Load saved DB state
             let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
 
+            // 3. Render rows
             for(let i = 1; i < data.length; i++) {
-                // Skip rows that are entirely blank across all columns
-                if(data[i].every(c => c === "")) continue; 
-                
                 html += '<tr>';
+                // We map the row index to the state directly to keep checks consistent
                 let rowState = state[i] || {};
                 
-                // Build the columns using the perfectly squared rows
-                for(let j = 0; j < maxCols; j++) {
-                    let cell = data[i][j];
-                    if (j === notesColIndex) {
-                        let rawVal = rowState.note !== undefined ? rowState.note : cell;
+                data[i].forEach((cell, colIdx) => {
+                    if (colIdx === notesColIndex) {
+                        let rawVal = rowState.note !== undefined ? rowState.note : (cell !== undefined && cell !== null ? cell : '');
                         let safeVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                         html += `<td><input type="text" value="${safeVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></td>`;
                     } else {
                         html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
                     }
-                }
+                });
                 
                 html += `
                     <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
@@ -383,7 +427,7 @@
             container.innerHTML = html;
         } catch (err) {
             console.error("Failed to parse resource:", err);
-            container.innerHTML = '<p style="color: red;">Failed to load resource list.</p>';
+            container.innerHTML = '<p style="color: red;">Failed to load resource list. The document may be corrupted or blocked by a cache.</p>';
         }
     }
 
