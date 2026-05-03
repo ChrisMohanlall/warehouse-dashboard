@@ -667,44 +667,51 @@
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
-            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            // Force SheetJS to include empty trailing cells with defval
+            const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
 
-            // SAFETY FIX 1: Prevent crash if the Excel sheet is completely empty
             if (!data || data.length === 0) {
                 container.innerHTML = '<p style="color: red;">The document is empty.</p>';
                 return;
             }
 
-            let maxLength = Math.max(...data.map(r => r.length));
-            data.forEach(r => { while(r.length < maxLength) r.push(""); });
+            // 1. Find the absolute maximum number of columns across ALL rows
+            let maxCols = 0;
+            data.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
 
+            // 2. Pad every row so they identically match maxCols
+            data.forEach(row => { while(row.length < maxCols) row.push(""); });
+
+            // 3. Find the "Notes" column (case-insensitive) in the header
             let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
 
             let html = '<table class="excel-table"><thead><tr>';
-            data[0].forEach(header => { html += `<th>${header || ''}</th>`; });
+            // Render headers based on maxCols
+            for(let j = 0; j < maxCols; j++) { html += `<th>${data[0][j] || ''}</th>`; }
             html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
 
+            // Load saved DB state
             let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
 
             for(let i = 1; i < data.length; i++) {
-                if(data[i].every(c => c === null || c === undefined || c.toString().trim() === '')) continue; 
+                // Skip rows that are entirely blank across all columns
+                if(data[i].every(c => c === "")) continue; 
                 
                 html += '<tr>';
                 let rowState = state[i] || {};
                 
-                data[i].forEach((cell, colIdx) => {
-                    if (colIdx === notesColIndex) {
-                        // Extract value, fallback to empty string
-                        let rawVal = rowState.note !== undefined ? rowState.note : (cell !== undefined && cell !== null ? cell : '');
-                        
-                        // SAFETY FIX 2: Force to String and fully sanitize to prevent numeric crashes & HTML injection
-                        let safeNoteVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                        
-                        html += `<td><input type="text" value="${safeNoteVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;"></td>`;
+                // Build the columns using the perfectly squared rows
+                for(let j = 0; j < maxCols; j++) {
+                    let cell = data[i][j];
+                    if (j === notesColIndex) {
+                        let rawVal = rowState.note !== undefined ? rowState.note : cell;
+                        let safeVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                        html += `<td><input type="text" value="${safeVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></td>`;
                     } else {
                         html += `<td>${cell !== undefined && cell !== null ? cell : ''}</td>`;
                     }
-                });
+                }
                 
                 html += `
                     <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
