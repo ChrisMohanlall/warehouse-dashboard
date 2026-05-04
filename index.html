@@ -776,6 +776,12 @@
                 resource_excel_url: trk.resource_excel_url || "",
                 resource_state: trk.resource_state
             });
+            
+            // NEW: Instantly tell everyone else to update their table!
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'RESOURCE_UPDATE', truckId: truckId }));
+            }
+            
         } catch(e) {
             console.error("Failed to sync state to server", e);
         }
