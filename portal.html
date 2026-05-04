@@ -654,43 +654,41 @@
 
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 
-    setInterval(() => {
-        const isLoggingTrip = $('trip_km') && $('trip_km').value !== "";
-        const isLoggingFuel = $('fuel_km') && $('fuel_km').value !== "";
-        const isModalOpen = ($('driverModal') && $('driverModal').style.display === 'flex') || 
-                            ($('locationModal') && $('locationModal').style.display === 'flex');
-        
-        if (!isLoggingTrip && !isLoggingFuel && !isModalOpen) {
-            
-            // Capture the driver's current selections
-            const currentTripDriver = $('trip_driver').value;
-            const currentTripTruck = $('trip_truck').value;
-            const currentTripLoc = $('trip_location').value;
-            const currentSchedule = $('schedule_select') ? $('schedule_select').value : "";
-            const currentResourceTrk = $('resource_truck_select') ? $('resource_truck_select').value : "";
+    // Connect to the WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = API_URL.replace(/^http(s)?:\/\//, wsProtocol + '//') + '/ws';
+    const socket = new WebSocket(wsUrl);
 
-            loadData().then(() => {
-                // Restore their selections seamlessly
-                $('trip_driver').value = currentTripDriver;
-                $('trip_truck').value = currentTripTruck;
-                $('trip_location').value = currentTripLoc;
+    // Listen for real-time updates
+    socket.onmessage = async function(event) {
+        const msg = JSON.parse(event.data);
+        
+        if (msg.type === 'RESOURCE_UPDATE') {
+            // Check which truck is currently on screen
+            const viewTruckId = window.isDriverApp ? $('resource_truck_select')?.value : $('view_resource_truck')?.value;
+            const viewSectionId = window.isDriverApp ? 'resources-view' : 'resources-view';
+            
+            // If we are looking at the exact truck that was just updated
+            if (viewTruckId == msg.truckId && $(viewSectionId).style.display === 'block') {
                 
-                if($('schedule_select')) $('schedule_select').value = currentSchedule;
-                if($('resource_truck_select')) {
-                    $('resource_truck_select').value = currentResourceTrk;
+                // Ensure we don't overwrite if they are currently typing a note
+                const activeEl = document.activeElement;
+                const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text';
+                
+                if (!isTyping) {
+                    // Fetch ONLY the fresh truck memory (leaves the DOM and dropdowns totally alone)
+                    globalTrucks = await apiCall('/trucks/'); 
                     
-                    // NEW: Check if the user is currently typing a note
-                    const activeEl = document.activeElement;
-                    const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text' && activeEl.closest('#resource-container');
-                    
-                    // NEW: Only redraw the table if they aren't actively typing, and the tab is open
-                    if (currentResourceTrk && !isTyping && $('resources-view').style.display === 'block') {
+                    // Surgically re-render just the table
+                    if (window.isDriverApp) {
                         renderResource();
+                    } else {
+                        renderTruckResource();
                     }
                 }
-            });
+            }
         }
-    }, 5000); // Changed to 5 seconds for near real-time syncing
+    };
     
     // Initial data load
     loadData();
