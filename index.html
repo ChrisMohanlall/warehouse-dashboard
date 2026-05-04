@@ -68,6 +68,39 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         #loading-text { font-weight: bold; font-size: 1.1rem; color: #333; margin-bottom: 5px; }
         #loading-subtext { font-size: 0.9rem; color: #666; text-align: center; padding: 0 20px; }
+
+        /* Cell Highlighting */
+        .highlighted-cell {
+            background-color: #ffeb3b !important; /* Bright yellow */
+            transition: background-color 0.2s ease;
+        }
+        .clickable-cell {
+            cursor: pointer;
+        }
+        .clickable-cell:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Totals Modal Styling */
+        .totals-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .totals-table-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .totals-table-container th, .totals-table-container td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        .totals-table-container th {
+            background: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
     </style>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -276,6 +309,7 @@
             <select id="view_resource_truck" onchange="renderTruckResource()" style="max-width: 300px;">
                 <option value="">-- Choose a Truck --</option>
             </select>
+            <button class="btn btn-blue btn-inline" style="display: none; margin-left: 10px;" id="btn-show-totals" onclick="showTotals()">📊 Calculate Totals</button>
             <div id="resource-table-container" style="overflow-x: auto; margin-top: 15px; max-height: 60vh;">
                 <p style="color: #666;"><i>Select a truck to view its interactive loadout.</i></p>
             </div>
@@ -362,6 +396,19 @@
     </div>
 </div>
 
+<!-- TOTALS MODAL -->
+<div id="totalsModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+            <h3 style="margin: 0;">Item Totals</h3>
+            <button onclick="$('totalsModal').style.display='none'" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">❌</button>
+        </div>
+        <div id="totals-content" class="totals-table-container">
+            <!-- Totals will be injected here -->
+        </div>
+    </div>
+</div>
+    
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
