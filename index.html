@@ -972,6 +972,36 @@
         $('totalsModal').style.display = 'flex';
     }
 
+    // --- NEW: Save Totals Checkbox State ---
+    async function saveTotalState(truckId, itemName, isChecked) {
+        const trk = globalTrucks.find(t => t.id == truckId);
+        if(!trk) return;
+        
+        let state = trk.resource_state ? JSON.parse(trk.resource_state) : {};
+        if (!state.t) state.t = {}; // Initialize totals state object if it doesn't exist
+        
+        state.t[itemName] = isChecked;
+        
+        // Update local memory
+        trk.resource_state = JSON.stringify(state);
+        
+        // Push the update to the backend silently
+        try {
+            await apiCall(`/trucks/${truckId}`, 'PUT', { 
+                truck_name: trk.truck_name, license_plate: trk.license_plate, purpose: trk.purpose, 
+                status: trk.status, start_fuel: trk.start_fuel, location_id: trk.current_location_id || 1, 
+                icon_url: trk.icon_url || "", general_notes: trk.general_notes || "",
+                resource_excel_url: trk.resource_excel_url || "", resource_state: trk.resource_state
+            });
+            
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'RESOURCE_UPDATE', truckId: truckId }));
+            }
+        } catch(e) {
+            console.error("Failed to sync totals state", e);
+        }
+    }
+    
     async function removeListSetting(type, index) { 
         if(type==='icons') globalIcons.splice(index, 1); 
         else if(type==='routes') globalRoutes.splice(index, 1);
