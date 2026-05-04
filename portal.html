@@ -699,13 +699,21 @@
     }
 
     // --- NEW: Automated Totals Calculator ---
+    // --- UPDATED: Automated Totals Calculator with Checkboxes ---
     function showTotals() {
         if (!window.currentResourceData || window.currentResourceData.length === 0) return;
+
+        // 1. Get current truck and its saved totals state
+        const truckId = window.isDriverApp ? $('resource_truck_select').value : $('view_resource_truck').value;
+        const truck = globalTrucks.find(t => t.id == truckId);
+        if (!truck) return;
+        
+        let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
+        let totalsState = state.t || {}; // Checkbox state for totals
 
         const data = window.currentResourceData;
         const headers = data[0].map(h => String(h).toLowerCase().trim());
         
-        // Dynamically find the columns based on common names
         let itemCol = headers.findIndex(h => h.includes('item') || h.includes('description') || h.includes('equipment') || h.includes('name'));
         let qtyCol = headers.findIndex(h => h === 'quantity' || h === 'qty' || h === 'count' || h === 'amount');
 
@@ -728,25 +736,33 @@
             let parsedQty = parseFloat(currentQtyStr);
 
             if (!totals[itemName]) totals[itemName] = 0;
-
-            if (totals[itemName] === 'all') continue; // Already maxed out at "all"
+            if (totals[itemName] === 'all') continue; 
 
             if (currentQtyStr === 'all') {
                 totals[itemName] = 'all';
             } else if (!isNaN(parsedQty)) {
                 totals[itemName] += parsedQty;
             } else {
-                // If it's a random string like "1 box", just keep it as a string
                 if (currentQtyStr) totals[itemName] = currentQtyStr; 
             }
         }
 
-        // Build the HTML for the Modal
-        let html = '<table><thead><tr><th>Item</th><th>Total Quantity</th></tr></thead><tbody>';
+        // 2. Build the HTML with the new Checkbox column
+        let html = '<table><thead><tr><th>Item</th><th>Total</th><th>Done</th></tr></thead><tbody>';
         
         let sortedItems = Object.keys(totals).sort();
         for (let item of sortedItems) {
-            html += `<tr><td>${item}</td><td style="font-weight: bold;">${totals[item]}</td></tr>`;
+            let isChecked = totalsState[item] ? 'checked' : '';
+            // Safely escape quotes for the data attribute
+            let safeItem = item.replace(/"/g, '&quot;'); 
+            
+            html += `<tr>
+                <td>${item}</td>
+                <td style="font-weight: bold;">${totals[item]}</td>
+                <td style="text-align:center;">
+                    <input type="checkbox" ${isChecked} data-item="${safeItem}" onchange="saveTotalState(${truck.id}, this.dataset.item, this.checked)" style="width:20px; height:20px; accent-color: #007bff; cursor: pointer;">
+                </td>
+            </tr>`;
         }
         html += '</tbody></table>';
 
