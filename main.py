@@ -3,6 +3,7 @@ import json
 import shutil
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
+from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Text, DateTime
@@ -17,6 +18,40 @@ load_dotenv()
 os.makedirs("uploads/routes", exist_ok=True)
 os.makedirs("uploads/schedules", exist_ok=True)
 os.makedirs("uploads/resources", exist_ok=True)
+
+# Manages all active real-time connections
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+manager = ConnectionManager()
+
+# The WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Wait for a message from a client
+            data = await websocket.receive_text()
+            
+            # Instantly echo that message to EVERYONE ELSE connected
+            for connection in manager.active_connections:
+                if connection != websocket:
+                    try:
+                        await connection.send_text(data)
+                    except:
+                        pass
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 # --- DATABASE SETUP ---
