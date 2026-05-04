@@ -1464,6 +1464,10 @@
                     } else {
                         renderTruckResource();
                     }
+                    // NEW: If the totals modal is currently open, re-render it to show live checkbox updates
+                    if ($('totalsModal').style.display === 'flex') {
+                        showTotals();
+                    }
                 }
             }
         }
