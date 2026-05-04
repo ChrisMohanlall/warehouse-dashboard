@@ -1213,33 +1213,42 @@
         adminMarker = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([lng, lat]).addTo(adminMap);
     }
 
-    setInterval(() => {
-        const isEditingLoc = $('edit_loc_id') && $('edit_loc_id').value !== "";
-        const isEditingTrk = $('edit_trk_id') && $('edit_trk_id').value !== "";
-        
-        if (!isEditingLoc && !isEditingTrk) {
-            // Capture the admin's current reading selections
-            const currentSchedule = $('schedule_select') ? $('schedule_select').value : "";
-            const currentResourceTrk = $('view_resource_truck') ? $('view_resource_truck').value : "";
+    // Connect to the WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = API_URL.replace(/^http(s)?:\/\//, wsProtocol + '//') + '/ws';
+    const socket = new WebSocket(wsUrl);
 
-            loadData().then(() => {
-                // Restore their selections seamlessly
-                if($('schedule_select')) $('schedule_select').value = currentSchedule;
-                if($('view_resource_truck')) {
-                    $('view_resource_truck').value = currentResourceTrk;
+    // Listen for real-time updates
+    socket.onmessage = async function(event) {
+        const msg = JSON.parse(event.data);
+        
+        if (msg.type === 'RESOURCE_UPDATE') {
+            // Check which truck is currently on screen
+            const viewTruckId = window.isDriverApp ? $('resource_truck_select')?.value : $('view_resource_truck')?.value;
+            const viewSectionId = window.isDriverApp ? 'resources-view' : 'resources-view';
+            
+            // If we are looking at the exact truck that was just updated
+            if (viewTruckId == msg.truckId && $(viewSectionId).style.display === 'block') {
+                
+                // Ensure we don't overwrite if they are currently typing a note
+                const activeEl = document.activeElement;
+                const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text';
+                
+                if (!isTyping) {
+                    // Fetch ONLY the fresh truck memory (leaves the DOM and dropdowns totally alone)
+                    globalTrucks = await apiCall('/trucks/'); 
                     
-                    // NEW: Check if the user is currently typing a note
-                    const activeEl = document.activeElement;
-                    const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text' && activeEl.closest('#resource-table-container');
-                    
-                    // NEW: Only redraw the table if they aren't actively typing, and the tab is open
-                    if (currentResourceTrk && !isTyping && $('resources-view').style.display === 'block') {
+                    // Surgically re-render just the table
+                    if (window.isDriverApp) {
+                        renderResource();
+                    } else {
                         renderTruckResource();
                     }
                 }
-            });
+            }
         }
-    }, 5000); // Changed to 5 seconds for near real-time syncing
+    };
+    
 </script>
 </body>
 </html>
