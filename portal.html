@@ -144,7 +144,6 @@
         <h3>Add New Driver</h3>
         <label>First Name:</label><input type="text" id="new_dr_first">
         <label>Last Initial:</label><input type="text" id="new_dr_last" maxlength="1">
-        <label>Phone:</label><input type="tel" id="new_dr_phone" inputmode="tel">
         <button class="btn btn-green" onclick="saveDriver()">Save Driver</button>
         <button class="btn btn-red" onclick="$('driverModal').style.display='none'">Cancel</button>
     </div>
@@ -589,9 +588,8 @@
         await apiCall('/drivers/', 'POST', { 
             first_name: $('new_dr_first').value, 
             last_initial: $('new_dr_last').value, 
-            phone: $('new_dr_phone').value 
         });
-        $('new_dr_first').value = ''; $('new_dr_last').value = ''; $('new_dr_phone').value = '';
+        $('new_dr_first').value = ''; $('new_dr_last').value = '';
         $('driverModal').style.display='none'; 
         loadData(); 
     }
