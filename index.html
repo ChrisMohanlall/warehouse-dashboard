@@ -721,7 +721,7 @@
         }
     }
 
-    async function renderTruckResource() {
+    async function renderTruckResource(skipFetch = false) {
         const truckId = $('view_resource_truck').value;
         const container = $('resource-table-container');
         
@@ -738,96 +738,96 @@
             return;
         }
 
-        const url = truck.resource_excel_url;
-        container.innerHTML = '<p>Loading resource...</p>';
-        
-        if (url.toLowerCase().endsWith('.pdf')) {
-            container.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
-            container.innerHTML += `<button class="btn btn-blue" style="margin-top:10px;" onclick="window.open('${url}', '_blank')">Open Full Screen</button>`;
-            return;
-        }
-
-        try {
-            // Prevent aggressive PWA/Browser caching on the file
-            const response = await fetch(url + '?t=' + new Date().getTime(), { cache: 'no-store' });
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+        // Only fetch and process the Excel file if skipFetch is false
+        if (!skipFetch) {
+            const url = truck.resource_excel_url;
+            container.innerHTML = '<p>Loading resource...</p>';
             
-            let rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
-
-            if (!rawData || rawData.length === 0) {
-                container.innerHTML = '<p style="color: red;">The document is empty.</p>';
+            if (url.toLowerCase().endsWith('.pdf')) {
+                container.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:1px solid #ccc; border-radius:8px; background:white;"></iframe>`;
+                container.innerHTML += `<button class="btn btn-blue" style="margin-top:10px;" onclick="window.open('${url}', '_blank')">Open Full Screen</button>`;
                 return;
             }
 
-            // 1. Find the TRUE number of columns based on the header row, ignoring stray ghost cells to the right.
-            let headerRow = rawData[0] || [];
-            let maxCols = 0;
-            for (let j = headerRow.length - 1; j >= 0; j--) {
-                if (headerRow[j] !== undefined && headerRow[j] !== null && headerRow[j].toString().trim() !== "") {
-                    maxCols = j + 1;
-                    break;
+            try {
+                const response = await fetch(url + '?t=' + new Date().getTime(), { cache: 'no-store' });
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: 'array'});
+                
+                let rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+
+                if (!rawData || rawData.length === 0) {
+                    container.innerHTML = '<p style="color: red;">The document is empty.</p>';
+                    return;
                 }
-            }
-            // Fallback just in case the header is blank
-            if (maxCols === 0) {
-                rawData.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
-            }
 
-            // 2. Clean and enforce perfect table geometry
-            let data = [];
-            for (let i = 0; i < rawData.length; i++) {
-                let row = rawData[i].slice(0, maxCols);
-                while(row.length < maxCols) row.push("");
-                
-                // Skip completely empty rows (except the header)
-                if (i > 0 && row.every(c => c.toString().trim() === '')) continue;
-                
-                data.push(row);
-            }
-
-            // Save data globally for the calculator
-            window.currentResourceData = data;
-            $('btn-show-totals').style.display = 'inline-block'; // Show the button
-
-            let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
-
-            let html = '<table class="excel-table"><thead><tr>';
-            for(let j = 0; j < maxCols; j++) { html += `<th>${data[0][j] || ''}</th>`; }
-            html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
-
-            let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
-
-            for(let i = 1; i < data.length; i++) {
-                html += '<tr>';
-                let rowState = state[i] || {};
-                let highlights = rowState.h || {}; // NEW: Extract highlights object
-                
-                for(let j = 0; j < maxCols; j++) {
-                    let cell = data[i][j];
-                    if (j === notesColIndex) {
-                        let rawVal = rowState.note !== undefined ? rowState.note : cell;
-                        let safeVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                        html += `<td><input type="text" value="${safeVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></td>`;
-                    } else {
-                        // NEW: Make cell clickable and check if it should be highlighted
-                        let isHighlighted = highlights[j] ? 'highlighted-cell' : '';
-                        html += `<td id="cell_${i}_${j}" class="clickable-cell ${isHighlighted}" onclick="toggleHighlight(${truck.id}, ${i}, ${j})">${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                let headerRow = rawData[0] || [];
+                let maxCols = 0;
+                for (let j = headerRow.length - 1; j >= 0; j--) {
+                    if (headerRow[j] !== undefined && headerRow[j] !== null && headerRow[j].toString().trim() !== "") {
+                        maxCols = j + 1;
+                        break;
                     }
                 }
-                
-                html += `
-                    <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
-                    <td style="text-align:center;"><input type="checkbox" ${rowState.c2 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c2', this.checked)" style="width:20px; height:20px;"></td>
-                    <td style="text-align:center;"><input type="checkbox" ${rowState.c3 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c3', this.checked)" style="width:20px; height:20px;"></td>
-                </tr>`;
+                if (maxCols === 0) {
+                    rawData.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+                }
+
+                let data = [];
+                for (let i = 0; i < rawData.length; i++) {
+                    let row = rawData[i].slice(0, maxCols);
+                    while(row.length < maxCols) row.push("");
+                    if (i > 0 && row.every(c => c.toString().trim() === '')) continue;
+                    data.push(row);
+                }
+
+                window.currentResourceData = data;
+            } catch (err) {
+                console.error("Failed to parse resource:", err);
+                container.innerHTML = '<p style="color: red;">Failed to load resource list. The document may be corrupted or blocked by a cache.</p>';
+                return;
             }
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        } catch (err) {
-            console.error("Failed to parse resource:", err);
-            container.innerHTML = '<p style="color: red;">Failed to load resource list. The document may be corrupted or blocked by a cache.</p>';
         }
+
+        // --- DRAW THE HTML (Runs instantly on WS Syncs) ---
+        const data = window.currentResourceData;
+        if (!data || data.length === 0) return;
+
+        $('btn-show-totals').style.display = 'inline-block'; 
+        let notesColIndex = data[0].findIndex(h => typeof h === 'string' && h.toLowerCase().trim().includes('notes'));
+        let maxCols = data[0].length;
+
+        let html = '<table class="excel-table"><thead><tr>';
+        for(let j = 0; j < maxCols; j++) { html += `<th>${data[0][j] || ''}</th>`; }
+        html += '<th>Truck Loading</th><th>Load In</th><th>Load Out</th></tr></thead><tbody>';
+
+        let state = truck.resource_state ? JSON.parse(truck.resource_state) : {};
+
+        for(let i = 1; i < data.length; i++) {
+            html += '<tr>';
+            let rowState = state[i] || {};
+            let highlights = rowState.h || {}; 
+            
+            for(let j = 0; j < maxCols; j++) {
+                let cell = data[i][j];
+                if (j === notesColIndex) {
+                    let rawVal = rowState.note !== undefined ? rowState.note : cell;
+                    let safeVal = String(rawVal).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    html += `<td><input type="text" value="${safeVal}" onchange="saveResourceState(${truck.id}, ${i}, 'note', this.value)" style="width: 100%; min-width: 150px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></td>`;
+                } else {
+                    let isHighlighted = highlights[j] ? 'highlighted-cell' : '';
+                    html += `<td id="cell_${i}_${j}" class="clickable-cell ${isHighlighted}" onclick="toggleHighlight(${truck.id}, ${i}, ${j})">${cell !== undefined && cell !== null ? cell : ''}</td>`;
+                }
+            }
+            
+            html += `
+                <td style="text-align:center;"><input type="checkbox" ${rowState.c1 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c1', this.checked)" style="width:20px; height:20px;"></td>
+                <td style="text-align:center;"><input type="checkbox" ${rowState.c2 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c2', this.checked)" style="width:20px; height:20px;"></td>
+                <td style="text-align:center;"><input type="checkbox" ${rowState.c3 ? 'checked' : ''} onchange="saveResourceState(${truck.id}, ${i}, 'c3', this.checked)" style="width:20px; height:20px;"></td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
     }
 
     async function saveResourceState(truckId, rowIdx, field, value) {
@@ -1439,32 +1439,30 @@
     const socket = new WebSocket(wsUrl);
 
     // Listen for real-time updates
+    // Listen for real-time updates
     socket.onmessage = async function(event) {
         const msg = JSON.parse(event.data);
         
         if (msg.type === 'RESOURCE_UPDATE') {
-            // Check which truck is currently on screen
             const viewTruckId = window.isDriverApp ? $('resource_truck_select')?.value : $('view_resource_truck')?.value;
             const viewSectionId = window.isDriverApp ? 'resources-view' : 'resources-view';
             
-            // If we are looking at the exact truck that was just updated
             if (viewTruckId == msg.truckId && $(viewSectionId).style.display === 'block') {
-                
-                // Ensure we don't overwrite if they are currently typing a note
                 const activeEl = document.activeElement;
                 const isTyping = activeEl && activeEl.tagName === 'INPUT' && activeEl.type === 'text';
                 
                 if (!isTyping) {
-                    // Fetch ONLY the fresh truck memory (leaves the DOM and dropdowns totally alone)
+                    // Fetch ONLY the fresh truck memory from the DB
                     globalTrucks = await apiCall('/trucks/'); 
                     
-                    // Surgically re-render just the table
+                    // TRUE tells the function to bypass the Excel fetch and just rebuild the HTML
                     if (window.isDriverApp) {
-                        renderResource();
+                        renderResource(true); 
                     } else {
-                        renderTruckResource();
+                        renderTruckResource(true);
                     }
-                    // NEW: If the totals modal is currently open, re-render it to show live checkbox updates
+
+                    // If the totals modal is currently open, re-render it to show live checkbox updates
                     if ($('totalsModal').style.display === 'flex') {
                         showTotals();
                     }
