@@ -52,7 +52,6 @@ class DBDriver(Base):
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String)
     last_initial = Column(String)
-    phone = Column(String)
 
 class DBTruck(Base):
     __tablename__ = "trucks"
@@ -195,7 +194,7 @@ def get_db():
 
 class SettingUpdate(BaseModel): value: str
 class SettingListUpdate(BaseModel): items: list
-class DriverCreate(BaseModel): first_name: str; last_initial: str; phone: str
+class DriverCreate(BaseModel): first_name: str; last_initial: str
 class LocationCreate(BaseModel): name: str; type: str; description: Optional[str] = ""; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""; user: str = "Admin"
 class LocationUpdate(BaseModel): name: str; type: str; lat: Optional[float] = None; lng: Optional[float] = None; icon_url: Optional[str] = ""
 class TruckCreate(BaseModel): truck_name: str; license_plate: str; purpose: str; location_id: int; start_fuel: float; status: str = "Parked"; initial_photo_url: str = ""; general_notes: str = ""; resource_excel_url: str = ""; icon_url: Optional[str] = ""; resource_state: str = "{}"
