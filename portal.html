@@ -671,6 +671,10 @@
             first_name: $('new_dr_first').value, 
             last_initial: $('new_dr_last').value, 
         });
+        // NEW: Tell everyone else to update their maps
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'MAP_UPDATE' }));
+        }
         $('new_dr_first').value = ''; $('new_dr_last').value = '';
         $('driverModal').style.display='none'; 
         loadData(); 
@@ -839,6 +843,10 @@
             description: $('new_loc_desc').value, 
             user: userName 
         });
+        // NEW: Tell everyone else to update their maps
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'MAP_UPDATE' }));
+        }
         
         $('new_loc_name').value = ''; $('new_loc_type').value = ''; $('new_loc_desc').value = ''; $('new_loc_driver').value = '';
         $('locationModal').style.display='none'; 
@@ -855,6 +863,11 @@
             end_fuel: parseFloat($('trip_fuel').value),
             damage_notes: $('trip_notes').value
         });
+        // NEW: Tell everyone else to update their maps
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'MAP_UPDATE' }));
+        }
+        
         alert("Trip logged successfully!"); 
         $('tripForm').reset(); 
         loadData(); 
@@ -868,6 +881,11 @@
             km_at_fuel_up: parseFloat($('fuel_km').value),
             receipt_url: $('fuel_receipt').value
         });
+        // NEW: Tell everyone else to update their maps
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'MAP_UPDATE' }));
+        }
+        
         alert("Fuel up logged successfully!"); 
         $('fuelForm').reset(); 
         loadData(); 
