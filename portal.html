@@ -761,11 +761,22 @@
         
         Object.values(routeMarkers).forEach(markerArray => {
             markerArray.forEach(m => {
-                const svg = m.getElement().querySelector('svg');
+                const el = m.getElement();
+                
+                // Scale default Mapbox SVG pins
+                const svg = el.querySelector('svg');
                 if (svg) {
                     svg.style.transform = `scale(${scale})`;
                     svg.style.transformOrigin = 'bottom center';
                     svg.style.transition = 'transform 0.1s ease';
+                }
+                
+                // Scale our newly embedded custom KML icons
+                const customIcon = el.querySelector('.custom-kml-icon');
+                if (customIcon) {
+                    customIcon.style.transform = `scale(${scale})`;
+                    customIcon.style.transformOrigin = 'bottom center';
+                    customIcon.style.transition = 'transform 0.1s ease';
                 }
             });
         });
