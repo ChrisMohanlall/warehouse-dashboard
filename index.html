@@ -1103,12 +1103,47 @@
         if (!targetMap.loaded()) { targetMap.once('load', () => drawRouteOnMap(url, layerId, targetMap)); return; }
         
         try {
-            const response = await fetch(url);
-            const data = await response.json();
+            let data;
+            
+            // Extract the file extension to determine how to parse it
+            const ext = url.split('.').pop().toLowerCase();
 
-            const lines = { type: 'FeatureCollection', features: data.features.filter(f => f.geometry.type.includes('LineString')) };
-            const points = data.features.filter(f => f.geometry.type === 'Point');
+            if (ext === 'kml' || ext === 'kmz') {
+                let kmlText = '';
+                
+                if (ext === 'kmz') {
+                    // Extract the compressed KML from inside the KMZ zip file
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const zip = await JSZip.loadAsync(blob);
+                    
+                    const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+                    if (!kmlFile) throw new Error("No KML file found inside KMZ.");
+                    kmlText = await zip.files[kmlFile].async('string');
+                } else {
+                    // Fetch standard KML text
+                    const res = await fetch(url);
+                    kmlText = await res.text();
+                }
 
+                // Convert KML XML to Mapbox-friendly GeoJSON using your imported library
+                const parser = new DOMParser();
+                const kmlDom = parser.parseFromString(kmlText, 'text/xml');
+                data = toGeoJSON.kml(kmlDom);
+                
+            } else {
+                // Handle standard GeoJSON normally
+                const response = await fetch(url);
+                data = await response.json();
+            }
+
+            // Ensure data is valid before attempting to draw
+            if (!data || !data.features) throw new Error("Invalid map data.");
+
+            const lines = { type: 'FeatureCollection', features: data.features.filter(f => f.geometry && f.geometry.type.includes('LineString')) };
+            const points = data.features.filter(f => f.geometry && f.geometry.type === 'Point');
+
+            // --- Draw the lines ---
             if (!targetMap.getSource(layerId)) {
                 targetMap.addSource(layerId, { type: 'geojson', data: lines });
                 targetMap.addLayer({ 
@@ -1122,6 +1157,7 @@
                 targetMap.getSource(layerId).setData(lines);
             }
 
+            // --- Draw the markers ---
             if (routeMarkers[layerId]) {
                 routeMarkers[layerId].forEach(m => m.remove());
             }
@@ -1129,8 +1165,8 @@
 
             points.forEach((pt, index) => {
                 const coords = pt.geometry.coordinates;
-                const name = pt.properties.name || `Waypoint ${index + 1}`;
-                const desc = pt.properties.description || '';
+                const name = pt.properties?.name || `Waypoint ${index + 1}`;
+                const desc = pt.properties?.description || '';
                 
                 const nameLower = name.toLowerCase();
                 let pinColor = '#8e8e93'; 
@@ -1156,6 +1192,7 @@
             });
 
             scaleRouteMarkers(targetMap);
+
         } catch (err) {
             console.error("Failed to render interactive route data:", err);
         }
