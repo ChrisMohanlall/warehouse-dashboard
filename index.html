@@ -614,6 +614,48 @@
     }
 
     // --- SCHEDULE & RESOURCE VIEWERS ---
+    async function uploadRoute() {
+        const fileInput = $('new_route_file');
+        
+        if(fileInput.files.length === 0) return alert("Please select a route file to upload.");
+
+        $('loading-overlay').style.display = 'flex';
+        let file = fileInput.files[0];
+        
+        // Generate a clean filename to prevent URL errors
+        const ext = file.name.split('.').pop().toLowerCase();
+        const newFileName = `route_${Date.now()}.${ext}`;
+
+        try {
+            // 1. Send the file to the backend
+            const formData = new FormData();
+            formData.append("file", file, newFileName);
+
+            const uploadRes = await fetch(`${API_URL}/upload-route/`, {
+                method: "POST",
+                body: formData
+            });
+            if (!uploadRes.ok) throw new Error("Upload failed. Ensure backend is running.");
+            
+            const data = await uploadRes.json();
+            const absoluteUrl = API_URL + data.url; 
+            
+            // 2. Add the new URL to the global list and save it to the database
+            globalRoutes.push(absoluteUrl);
+            await apiCall('/settings/list/routes', 'PUT', { items: globalRoutes });
+            
+            // 3. Refresh the map and UI
+            loadData();
+            fileInput.value = ''; 
+            alert("Route uploaded and saved successfully!");
+            
+        } catch (err) {
+            console.error(err);
+            alert("Error processing route: " + err.message);
+        } finally {
+            $('loading-overlay').style.display = 'none';
+        }
+    }
     async function uploadSchedule() {
         const name = $('new_schedule_name').value;
         const fileInput = $('upload_schedule_file');
