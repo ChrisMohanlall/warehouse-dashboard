@@ -884,6 +884,11 @@
     // Listen for real-time updates
     socket.onmessage = async function(event) {
         const msg = JSON.parse(event.data);
+
+        // NEW: Listen for general map and truck updates
+        if (msg.type === 'MAP_UPDATE') {
+            loadData(); // Instantly fetch fresh coordinates and redraw the map
+        }
         
         if (msg.type === 'RESOURCE_UPDATE') {
             const viewTruckId = window.isDriverApp ? $('resource_truck_select')?.value : $('view_resource_truck')?.value;
