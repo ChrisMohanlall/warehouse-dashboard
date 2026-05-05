@@ -182,6 +182,15 @@
                 <div id="map"></div>
             </div>
         </div>
+        <div class="card" style="margin-top: 20px; overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <h2>Recent Activity</h2>
+            <table>
+                <thead>
+                    <tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr>
+                </thead>
+                <tbody id="activity-table-main"></tbody>
+            </table>
+        </div>
     </div>
 
     <div id="admin-view" class="view-section">
@@ -587,12 +596,20 @@
             });
         }
 
+        let activityHtml = '';
+        logs.forEach(log => {
+            const date = new Date(log.timestamp).toLocaleString();
+            activityHtml += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
+        });
+
+        // Inject the rows into the Admin portal table
         if($('activity-table')) {
-            $('activity-table').innerHTML = '';
-            logs.forEach(log => {
-                const date = new Date(log.timestamp).toLocaleString();
-                $('activity-table').innerHTML += `<tr><td>${date}</td><td><b>${log.user}</b></td><td><b>${log.action}</b></td><td>${log.details}</td></tr>`;
-            });
+            $('activity-table').innerHTML = activityHtml;
+        }
+        
+        // Inject the rows into the new Main Dashboard table
+        if($('activity-table-main')) {
+            $('activity-table-main').innerHTML = activityHtml;
         }
     }
 
