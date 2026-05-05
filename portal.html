@@ -597,7 +597,7 @@
         try {
             let data;
             let zipArchive = null; 
-            let iconCache = {}; // Caches extracted images to keep memory usage low
+            let iconCache = {}; 
 
             const ext = url.split('.').pop().toLowerCase();
 
@@ -620,6 +620,35 @@
                 const parser = new DOMParser();
                 const kmlDom = parser.parseFromString(kmlText, 'text/xml');
                 data = toGeoJSON.kml(kmlDom);
+
+                // --- FIX FOR TOGEOJSON GOOGLE MAPS BUG ---
+                // toGeoJSON drops icons hidden inside <StyleMap> tags. We manually extract them here.
+                const styles = {};
+                kmlDom.querySelectorAll('Style').forEach(style => {
+                    const id = style.getAttribute('id');
+                    const href = style.querySelector('Icon href')?.textContent;
+                    if (id && href) styles['#' + id] = href;
+                });
+                
+                kmlDom.querySelectorAll('StyleMap').forEach(styleMap => {
+                    const id = styleMap.getAttribute('id');
+                    styleMap.querySelectorAll('Pair').forEach(pair => {
+                        const key = pair.querySelector('key')?.textContent;
+                        const styleUrl = pair.querySelector('styleUrl')?.textContent;
+                        if (key === 'normal' && id && styleUrl) {
+                            styles['#' + id] = styles[styleUrl]; 
+                        }
+                    });
+                });
+
+                // Inject the missing icons back into the parsed GeoJSON data
+                data.features.forEach(f => {
+                    if (f.geometry && f.geometry.type === 'Point' && !f.properties.icon && f.properties.styleUrl) {
+                        if (styles[f.properties.styleUrl]) {
+                            f.properties.icon = styles[f.properties.styleUrl];
+                        }
+                    }
+                });
                 
             } else {
                 const response = await fetch(url);
@@ -651,29 +680,39 @@
             }
             routeMarkers[layerId] = [];
 
-            // Using a standard 'for' loop so we can pause and extract images asynchronously
             for (let i = 0; i < points.length; i++) {
                 const pt = points[i];
                 const coords = pt.geometry.coordinates;
                 const name = pt.properties?.name || `Waypoint ${i + 1}`;
                 const desc = pt.properties?.description || '';
                 
-                // toGeoJSON maps custom KML styles here
                 let iconUrl = pt.properties?.icon; 
                 let markerElement = null;
 
                 if (iconUrl) {
-                    // If it's a local file inside the KMZ archive, extract it to a temporary Blob URL
-                    if (zipArchive && zipArchive.file(iconUrl)) {
-                        if (!iconCache[iconUrl]) {
-                            const imgBlob = await zipArchive.file(iconUrl).async('blob');
-                            iconCache[iconUrl] = URL.createObjectURL(imgBlob);
-                        }
-                        iconUrl = iconCache[iconUrl];
+                    // Force HTTPS to prevent browsers from blocking mixed content (Google Maps HTTP issue)
+                    if (typeof iconUrl === 'string' && iconUrl.startsWith('http://')) {
+                        iconUrl = iconUrl.replace('http://', 'https://');
                     }
 
-                    // Mapbox overwrites the CSS 'transform' property of the parent element for positioning.
-                    // We create a wrapper div, and put the image inside a child div so we can scale it later!
+                    if (zipArchive) {
+                        // Fuzzy search for the image in the zip file
+                        let zipFile = zipArchive.file(iconUrl);
+                        if (!zipFile) {
+                            const searchName = iconUrl.split('/').pop().toLowerCase();
+                            const match = Object.keys(zipArchive.files).find(name => name.toLowerCase().endsWith(searchName));
+                            if (match) zipFile = zipArchive.files[match];
+                        }
+                        
+                        if (zipFile) {
+                            if (!iconCache[iconUrl]) {
+                                const imgBlob = await zipFile.async('blob');
+                                iconCache[iconUrl] = URL.createObjectURL(imgBlob);
+                            }
+                            iconUrl = iconCache[iconUrl];
+                        }
+                    }
+
                     const wrapper = document.createElement('div');
                     markerElement = document.createElement('div');
                     markerElement.className = 'custom-kml-icon';
@@ -698,10 +737,8 @@
 
                 let markerObj;
                 if (markerElement) {
-                    // Use the custom image we just built
                     markerObj = new mapboxgl.Marker({ element: markerElement, anchor: 'bottom' });
                 } else {
-                    // Fallback to the intelligent color-coded default pins
                     const nameLower = name.toLowerCase();
                     let pinColor = '#8e8e93'; 
                     if(nameLower.includes('start')) pinColor = '#34c759'; 
@@ -726,7 +763,6 @@
             console.error("Failed to render interactive route data:", err);
         }
     }
-
     // --- FORM LOGIC & REFRESHERS ---
 
     function checkDropdowns() {
