@@ -76,6 +76,7 @@ class DBTripLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     truck_id = Column(Integer, ForeignKey("trucks.id"))
     driver_id = Column(Integer, ForeignKey("drivers.id"))
+    destination_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
     current_trip_end_km = Column(Float)
     end_fuel = Column(Float)
     damage_notes = Column(Text)
